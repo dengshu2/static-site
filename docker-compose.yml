@@ -1,0 +1,20 @@
+services:
+  web:
+    image: joseluisq/static-web-server:2
+    container_name: static-web-server
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html:/public:ro
+    environment:
+      # 服务器根目录
+      - SERVER_ROOT=/public
+      # 日志级别: error, warn, info, debug, trace
+      - SERVER_LOG_LEVEL=info
+      # 启用目录列表（可选）
+      - SERVER_DIRECTORY_LISTING=false
+      # 启用 gzip 压缩
+      - SERVER_COMPRESSION=true
+      # 缓存控制头
+      - SERVER_CACHE_CONTROL_HEADERS=true
