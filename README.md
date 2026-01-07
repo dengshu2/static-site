@@ -1,6 +1,6 @@
-# Static Web Server Demo
+# Static Site
 
-使用 Docker Compose 部署的静态网页服务器项目。
+使用 Docker Compose 部署的静态网站服务。
 
 ## 技术栈
 
@@ -13,7 +13,8 @@
 .
 ├── docker-compose.yml    # Docker Compose 配置
 ├── html/                 # 静态文件目录
-│   └── index.html        # 首页
+│   ├── index.html        # 首页
+│   └── ...               # 其他页面
 ├── .gitignore
 └── README.md
 ```
@@ -26,19 +27,38 @@
 docker compose up -d
 ```
 
-### 访问网站
-
-打开浏览器访问: http://localhost:8080
-
 ### 停止服务
 
 ```bash
 docker compose down
 ```
 
-## 添加更多页面
+## 访问页面
 
-将你的 HTML、CSS、JavaScript 和其他静态文件放入 `html/` 目录即可。
+服务启动后，通过以下规则访问页面：
+
+| 文件路径 | 访问 URL |
+|---------|----------|
+| `html/index.html` | http://localhost:8080/ |
+| `html/about.html` | http://localhost:8080/about.html |
+| `html/docs/guide.html` | http://localhost:8080/docs/guide.html |
+| `html/assets/style.css` | http://localhost:8080/assets/style.css |
+
+### 访问规则
+
+- **根路径 `/`** → 自动加载 `html/index.html`
+- **其他路径** → 直接映射到 `html/` 目录下的对应文件
+- 支持子目录，如 `html/docs/api.html` → `/docs/api.html`
+
+### 示例
+
+```bash
+# 添加新页面
+echo "<h1>About</h1>" > html/about.html
+
+# 访问
+curl http://localhost:8080/about.html
+```
 
 ## 配置说明
 
