@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心如止水</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #fdfbf7;
+            --text-color: #2c3e50;
+            --accent-color: #a8a8a8;
+            --transition-speed: 3s;
+        }
+
+        body.stage-3 {
+            --bg-color: #e8f5e9;
+            --text-color: #2e4c36;
+            --accent-color: #81c784;
+        }
+
+        body.stage-7 {
+            --bg-color: #e3f2fd;
+            --text-color: #1565c0;
+            --accent-color: #64b5f6;
+        }
+
+        body.stage-30 {
+            --bg-color: #263238;
+            --text-color: #eceff1;
+            --accent-color: #cfd8dc;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Noto Serif SC', serif;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+            overflow: hidden;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+        }
+
+        #day-counter {
+            font-size: 12rem;
+            font-weight: 300;
+            line-height: 1;
+            letter-spacing: -5px;
+            margin-bottom: 0px;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        }
+
+        .unit {
+            font-size: 1.5rem;
+            font-weight: 300;
+            opacity: 0.6;
+            margin-top: -10px;
+            display: block;
+            margin-bottom: 30px;
+        }
+
+        #time-details {
+            font-size: 1rem;
+            font-weight: 300;
+            opacity: 0.5;
+            letter-spacing: 2px;
+            border-top: 1px solid var(--accent-color);
+            padding-top: 20px;
+            display: inline-block;
+            transition: border-color var(--transition-speed);
+        }
+
+        #reset-btn {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            opacity: 0.05;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: opacity 0.5s ease;
+            font-family: 'Noto Serif SC', serif;
+            z-index: 100;
+            padding: 10px;
+        }
+
+        #reset-btn:hover {
+            opacity: 0.6;
+        }
+
+        @media (max-width: 768px) {
+            #day-counter {
+                font-size: 8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div id="day-counter">0</div>
+        <span class="unit">DAYS</span>
+        <div id="time-details">0 小时 0 分钟</div>
+    </div>
+
+    <button id="reset-btn" title="如何重置？">重置</button>
+
+    <script>
+        // ==========================================
+        // 🔴 设置区：请在这里手动修改你的开始时间
+        // 格式：YYYY-MM-DD HH:MM:SS (例如：2023-10-27 14:30:00)
+        // 这样重启电脑也永远不会丢！
+        // ==========================================
+        const START_DATE_STR = "2025-11-25 20:00:00";
+        // ==========================================
+
+        const dayEl = document.getElementById('day-counter');
+        const detailEl = document.getElementById('time-details');
+        const resetBtn = document.getElementById('reset-btn');
+        const body = document.body;
+
+        function getStartTime() {
+            // 将字符串转换为时间戳
+            return new Date(START_DATE_STR).getTime();
+        }
+
+        function updateDisplay() {
+            const startTime = getStartTime();
+            const now = Date.now();
+
+            // 防止设置了未来的时间出现负数
+            if (now < startTime) {
+                dayEl.textContent = "0";
+                detailEl.textContent = "等待开始...";
+                return;
+            }
+
+            const diff = now - startTime;
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+            dayEl.textContent = days;
+            detailEl.textContent = `${hours} 小时 ${minutes} 分钟`;
+
+            updateVisualTheme(days);
+        }
+
+        function updateVisualTheme(days) {
+            body.classList.remove('stage-3', 'stage-7', 'stage-30');
+            if (days >= 30) body.classList.add('stage-30');
+            else if (days >= 7) body.classList.add('stage-7');
+            else if (days >= 3) body.classList.add('stage-3');
+        }
+
+        // 修改了重置逻辑：不再是一键重置，而是提示如何修改文件
+        resetBtn.addEventListener('click', () => {
+            alert("为了防止数据丢失，已启用【手动记录模式】。\n\n如需重置，请用记事本打开此 HTML 文件，\n修改代码中的 'START_DATE_STR' 为当前时间。\n\n这种繁琐的过程，也是修行的一部分。");
+        });
+
+        updateDisplay();
+        setInterval(updateDisplay, 60000);
+    </script>
+</body>
+
+</html>
