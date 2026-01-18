@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认知科学学习 SOP - 给大脑装系统的说明书</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;       /* 深蓝灰背景 */
+            --card-bg: #1e293b;        /* 卡片背景 */
+            --text-primary: #f1f5f9;   /* 主文本色 */
+            --text-secondary: #94a3b8; /* 次级文本 */
+            --accent-color: #38bdf8;   /* 强调色（天蓝） */
+            --action-bg: #334155;      /* 操作块背景 */
+            --highlight: #facc15;      /* 警告/高亮色（黄） */
+            --border-radius: 12px;
+            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-stack);
+            line-height: 1.7;
+            font-size: 16px;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 头部设计 */
+        header {
+            margin-bottom: 4rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .warning-box {
+            background: rgba(250, 204, 21, 0.1);
+            border-left: 4px solid var(--highlight);
+            padding: 1rem;
+            margin-top: 1.5rem;
+            color: #fde047;
+            font-size: 0.95rem;
+        }
+
+        /* 核心步骤卡片 */
+        .step-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 6rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background-color: var(--accent-color);
+            margin-right: 12px;
+            border-radius: 4px;
+        }
+
+        .concept-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #fff;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* 操作块样式 - 模拟代码/终端 */
+        .action-block {
+            background-color: var(--action-bg);
+            border-left: 4px solid var(--highlight);
+            padding: 1rem 1.25rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+        }
+
+        .action-label {
+            color: var(--highlight);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        /* 总结区域 */
+        footer {
+            margin-top: 4rem;
+            text-align: center;
+            padding: 3rem 1rem;
+            background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.05));
+            border-radius: var(--border-radius);
+        }
+
+        .summary-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #fff;
+        }
+
+        .mantra {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .mantra em {
+            color: var(--accent-color);
+            font-style: normal;
+            font-weight: 700;
+        }
+
+        .final-blow {
+            margin-top: 3rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            h1 { font-size: 1.8rem; }
+            .step-card { padding: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>认知科学学习 SOP</h1>
+        <div class="subtitle">这不是建议，这是给大脑装系统的说明书。</div>
+        <div class="warning-box">
+            如果你想把那些理论变成真正的能力，而不是又收藏了一篇让你感觉良好的废话，请严格执行以下流程。
+        </div>
+    </header>
+
+    <main>
+        <!-- STEP 1 -->
+        <section class="step-card">
+            <div class="step-number">1</div>
+            <h2>第一步：信息过滤与预处理</h2>
+            <p>不要拿到书就读，不要拿到课就听。你的大脑带宽极低，必须进行残酷的筛选。</p>
+
+            <div class="concept-title">执行“二八法则”扫描</div>
+            <p>在开始学习前，花30分钟扫描教材目录或大纲。直接圈出那20%的核心概念。剩下的80%全是解释、废话和案例，那是留给笨人看的。只攻核心。</p>
+
+            <div class="concept-title">强制挂钩 (Association)</div>
+            <p>禁止孤立记忆。每输入一个新概念，必须强制自己回答：“这玩意儿像我以前知道的什么？”</p>
+
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                找不到旧知识挂钩，就别往下读。强行建立隐喻（例如：把“认知超载”想象成“堵车的CPU”）。没有挂钩的知识是垃圾代码，存不住。
+            </div>
+        </section>
+
+        <!-- STEP 2 -->
+        <section class="step-card">
+            <div class="step-number">2</div>
+            <h2>第二步：高强度编码 (90分钟)</h2>
+            <p>将时间切块。不要试图用“毅力”对抗生理极限。</p>
+
+            <div class="concept-title">设置90分钟绝对屏蔽区</div>
+            <p>手机扔出房间，断网。这90分钟是深潜。</p>
+
+            <div class="concept-title">极慢速演练 (Slow Burn)</div>
+            <p>如果是学技能（如编程、乐器、运动），以前所未有的慢速重复动作。</p>
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                慢到让你难受。不仅是慢，是分解。每一个细节都要精准。速度是掩盖错误的遮羞布，慢下来才能重塑神经回路。
+            </div>
+
+            <div class="concept-title">10秒微停顿</div>
+            <p>在这90分钟里，每隔十几分钟，停下来发呆10秒。</p>
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                盯着墙壁，什么都别想。这是给大脑海马体一个“回车键”信号，让它以20倍速重放刚才的内容。
+            </div>
+        </section>
+
+        <!-- STEP 3 -->
+        <section class="step-card">
+            <div class="step-number">3</div>
+            <h2>第三步：残酷输出测试 (即时编译)</h2>
+            <p>输入不是学习，输出才是。</p>
+
+            <div class="concept-title">费曼暴力测试</div>
+            <p>90分钟结束，立刻用大白话把刚才学的讲一遍。</p>
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                想象对面坐着一个小学生。如果你用了专业术语，说明你没懂。卡壳的地方，就是你认知的漏洞。立刻回去补那个漏洞。
+            </div>
+
+            <div class="concept-title">实战模拟</div>
+            <p>不要背诵，要应用。</p>
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                学英语就去和人对话，学代码就去写项目，学演讲就去录视频。如果你在模拟中感到尴尬、焦虑、痛苦，恭喜你，你的大脑正在产生“生成效应”，这才是长肉的时候。
+            </div>
+        </section>
+
+        <!-- STEP 4 -->
+        <section class="step-card">
+            <div class="step-number">4</div>
+            <h2>第四步：物理固化 (非睡眠深度休息)</h2>
+            <p>不要在休息时间刷短视频。那不是休息，那是往你刚整理好的神经连接里倒垃圾。</p>
+
+            <div class="concept-title">执行 NSDR (20分钟)</div>
+            <p>学习结束后，立刻进行非睡眠深度休息（Non-Sleep Deep Rest）。</p>
+            <div class="action-block">
+                <span class="action-label">操作 | Operation</span>
+                躺下或坐着，闭眼，什么都不做，放空20分钟。这20分钟是大脑将短期记忆写入长期记忆的关键窗口。刷手机会打断这个写入过程。
+            </div>
+
+            <div class="concept-title">保证睡眠</div>
+            <p>熬夜学习是愚蠢的代名词。睡眠是清理大脑代谢废物（如β-淀粉样蛋白）和巩固记忆的唯一时间。少睡一小时，白学三小时。</p>
+        </section>
+    </main>
+
+    <footer>
+        <div class="summary-title">核心逻辑：反直觉</div>
+        <div class="mantra">你以为学得快好，其实<em>慢练才快</em>。</div>
+        <div class="mantra">你以为一直学好，其实<em>停顿才记</em>。</div>
+        <div class="mantra">你以为舒服好，其实<em>痛苦（认知摩擦）才是进步的唯一指标</em>。</div>
+        
+        <div class="final-blow">从现在开始，按照这个流程操作。做不到就别谈学习，你那只是在打发时间。</div>
+    </footer>
+</div>
+
+</body>
+</html>
