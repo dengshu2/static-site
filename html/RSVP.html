@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Reader RSVP</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --highlight-color: #ff3b30; /* 截图中的红色 */
+            --guide-color: #333333;
+            --ui-bg: #1a1a1a;
+            --ui-text: #cccccc;
+        }
+
+        body {
+            background-color: #121212;
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* --- 阅读器核心区域 --- */
+        .reader-container {
+            background-color: var(--bg-color);
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            border-radius: 16px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        /* 上下辅助线区域 */
+        .guide-rail {
+            width: 100%;
+            height: 40px; /* 辅助线区域高度 */
+            position: absolute;
+            left: 0;
+            border-top: 1px solid var(--guide-color);
+            border-bottom: 1px solid var(--guide-color);
+        }
+        .guide-rail.top { top: 30%; border-bottom: none; }
+        .guide-rail.bottom { bottom: 30%; border-top: none; }
+
+        /* 中心垂直标记线 (Notch) */
+        .notch {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 15px;
+            background-color: #333;
+            z-index: 1;
+        }
+        .notch.top { top: calc(50% - 50px); } /* 位于文字上方 */
+        .notch.bottom { bottom: calc(50% - 40px); } /* 位于文字下方 */
+
+        /* 单词显示区域 - 核心布局 Flexbox */
+        .word-display {
+            display: flex;
+            align-items: baseline; /* 保持基线对齐 */
+            font-family: "Georgia", "Times New Roman", serif; /* 还原截图的衬线体 */
+            font-size: 48px;
+            line-height: 1;
+            z-index: 2;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .word-part {
+            white-space: pre;
+        }
+
+        /* 左侧：文字靠右对齐，推向中心 */
+        .word-left {
+            flex: 1;
+            text-align: right;
+        }
+
+        /* 中心：红色锚点，宽度自适应但尽量紧凑 */
+        .word-pivot {
+            color: var(--highlight-color);
+            text-align: center;
+            width: auto; 
+        }
+
+        /* 右侧：文字靠左对齐，从中心延伸 */
+        .word-right {
+            flex: 1;
+            text-align: left;
+        }
+
+        /* WPM 显示 */
+        .wpm-display {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        /* --- 控制面板区域 --- */
+        .controls {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 600px;
+            background: var(--ui-bg);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-area textarea {
+            width: 100%;
+            height: 80px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-primary { background: #fff; color: #000; }
+        .btn-primary:hover { background: #ddd; }
+        .btn-secondary { background: #444; color: #fff; }
+        .btn-secondary:hover { background: #555; }
+
+        .slider-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--ui-text);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        /* 进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            margin-top: 10px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--highlight-color);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 阅读器主体 -->
+    <div class="reader-container">
+        <!-- 装饰线条 -->
+        <div class="guide-rail top"></div>
+        <div class="guide-rail bottom"></div>
+        <div class="notch top"></div>
+        <div class="notch bottom"></div>
+
+        <!-- 单词显示区 -->
+        <div class="word-display">
+            <span class="word-part word-left" id="text-left"></span>
+            <span class="word-part word-pivot" id="text-pivot">Re</span>
+            <span class="word-part word-right" id="text-right">ady</span>
+        </div>
+
+        <div class="wpm-display"><span id="wpm-value">350</span> wpm</div>
+    </div>
+    
+    <!-- 进度条 -->
+    <div style="width: 100%; max-width: 600px;">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="controls">
+        <div class="control-row">
+            <div class="btn-group">
+                <button class="btn-primary" id="btn-toggle">开始播放</button>
+                <button class="btn-secondary" id="btn-reset">重置</button>
+            </div>
+            <div class="slider-container">
+                <span>速度:</span>
+                <input type="range" id="wpm-slider" min="100" max="1000" step="10" value="350">
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea id="input-text" placeholder="在这里粘贴你想阅读的文章...">Rapid Serial Visual Presentation (RSVP) is a scientific method of displaying information that allows you to read much faster than normal. By focusing your eyes on a single point, you eliminate eye movement, which is the biggest bottleneck in reading speed.</textarea>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心状态 ---
+        const state = {
+            words: [],
+            currentIndex: 0,
+            isPlaying: false,
+            wpm: 350,
+            timerId: null
+        };
+
+        // --- DOM 元素 ---
+        const els = {
+            left: document.getElementById('text-left'),
+            pivot: document.getElementById('text-pivot'),
+            right: document.getElementById('text-right'),
+            wpmDisplay: document.getElementById('wpm-value'),
+            wpmSlider: document.getElementById('wpm-slider'),
+            inputText: document.getElementById('input-text'),
+            btnToggle: document.getElementById('btn-toggle'),
+            btnReset: document.getElementById('btn-reset'),
+            progressFill: document.getElementById('progress-fill')
+        };
+
+        // --- 算法：计算最佳识别点 (ORP) ---
+        // 规则：根据单词长度决定红色的字母是第几个
+        function getPivotIndex(word) {
+            const len = word.length;
+            if (len === 1) return 0; // 只有1个字母，第1个红
+            if (len >= 2 && len <= 5) return 1; // 2-5个字母，第2个红 (index 1)
+            if (len >= 6 && len <= 9) return 2; // 6-9个字母，第3个红 (index 2)
+            if (len >= 10 && len <= 13) return 3; // 10-13个字母，第4个红
+            return 4; // 超长单词，第5个红
+        }
+
+        // --- 核心功能：渲染单个单词 ---
+        function renderWord(word) {
+            const pivotIndex = getPivotIndex(word);
+            
+            const leftPart = word.substring(0, pivotIndex);
+            const pivotChar = word.substring(pivotIndex, pivotIndex + 1);
+            const rightPart = word.substring(pivotIndex + 1);
+
+            els.left.textContent = leftPart;
+            els.pivot.textContent = pivotChar;
+            els.right.textContent = rightPart;
+        }
+
+        // --- 文本处理 ---
+        function parseText() {
+            const text = els.inputText.value.trim();
+            if (!text) return [];
+            // 将换行符转换为空格，然后按空格拆分，过滤空字符串
+            return text.replace(/[\r\n]+/g, ' ').split(' ').filter(w => w.length > 0);
+        }
+
+        // --- 播放逻辑 ---
+        function startReader() {
+            // 如果单词列表为空，或者已经读完了，重新解析
+            if (state.words.length === 0 || state.currentIndex >= state.words.length) {
+                state.words = parseText();
+                state.currentIndex = 0;
+            }
+            
+            if (state.words.length === 0) return;
+
+            state.isPlaying = true;
+            els.btnToggle.textContent = "暂停";
+            els.inputText.disabled = true; // 播放时禁止编辑
+            
+            loop();
+        }
+
+        function pauseReader() {
+            state.isPlaying = false;
+            clearTimeout(state.timerId);
+            els.btnToggle.textContent = "继续";
+            els.inputText.disabled = false;
+        }
+
+        function stopReader() {
+            pauseReader();
+            state.currentIndex = 0;
+            els.btnToggle.textContent = "开始播放";
+            updateProgress();
+            renderWord("Ready");
+        }
+
+        // --- 核心循环 (Loop) ---
+        function loop() {
+            if (!state.isPlaying) return;
+
+            if (state.currentIndex >= state.words.length) {
+                stopReader();
+                return;
+            }
+
+            const currentWord = state.words[state.currentIndex];
+            renderWord(currentWord);
+            updateProgress();
+
+            // 计算下一帧的延迟时间
+            let delay = 60000 / state.wpm;
+
+            // 智能延迟优化 (Punctuation Delay)
+            // 遇到标点符号时，给大脑更多时间处理句意，提升阅读体验
+            const lastChar = currentWord.slice(-1);
+            if (lastChar === '.' || lastChar === '!' || lastChar === '?') {
+                delay *= 2.2; // 句号停顿久一点
+            } else if (lastChar === ',' || lastChar === ';' || lastChar === ':') {
+                delay *= 1.5; // 逗号停顿稍微久一点
+            } else if (currentWord.length > 8) {
+                delay *= 1.2; // 长单词稍微慢一点
+            }
+
+            state.currentIndex++;
+            state.timerId = setTimeout(loop, delay);
+        }
+
+        function updateProgress() {
+            if (state.words.length === 0) {
+                els.progressFill.style.width = '0%';
+                return;
+            }
+            const pct = (state.currentIndex / state.words.length) * 100;
+            els.progressFill.style.width = `${pct}%`;
+        }
+
+        // --- 事件监听 ---
+
+        els.btnToggle.addEventListener('click', () => {
+            if (state.isPlaying) {
+                pauseReader();
+            } else {
+                startReader();
+            }
+        });
+
+        els.btnReset.addEventListener('click', () => {
+            stopReader();
+        });
+
+        els.wpmSlider.addEventListener('input', (e) => {
+            state.wpm = parseInt(e.target.value);
+            els.wpmDisplay.textContent = state.wpm;
+        });
+
+        // 初始化
+        els.wpmDisplay.textContent = state.wpm;
+        
+    </script>
+</body>
+</html>
