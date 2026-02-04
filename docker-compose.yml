@@ -18,3 +18,9 @@ services:
       - SERVER_COMPRESSION=true
       # 缓存控制头
       - SERVER_CACHE_CONTROL_HEADERS=true
+    networks:
+      - npm-network
+
+networks:
+  npm-network:
+    external: true
