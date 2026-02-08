@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量网址打开器</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --text-muted: #94a3b8;
+            --accent: #0891b2;
+            --accent-hover: #0e7490;
+            --accent-light: #ecfeff;
+            --border: #e2e8f0;
+            --error: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: var(--text-sub);
+        }
+
+        /* Main Card */
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 40px rgba(0, 0, 0, 0.04);
+            padding: 32px;
+        }
+
+        /* Input Section */
+        .input-section {
+            margin-bottom: 24px;
+        }
+
+        .input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .clear-btn {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .clear-btn:hover {
+            color: var(--error);
+            background: #fef2f2;
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            resize: vertical;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            background: #fafafa;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-sub);
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--text-main);
+            background: var(--accent-light);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .stat-value.warning {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        /* URL Preview */
+        .preview-section {
+            margin-bottom: 24px;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .preview-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .copy-list-btn {
+            font-size: 0.8rem;
+            color: var(--accent);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .copy-list-btn:hover {
+            background: var(--accent-light);
+        }
+
+        .url-list {
+            max-height: 180px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .url-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            gap: 10px;
+        }
+
+        .url-item:last-child {
+            border-bottom: none;
+        }
+
+        .url-index {
+            color: var(--text-muted);
+            font-weight: 500;
+            min-width: 24px;
+        }
+
+        .url-text {
+            flex: 1;
+            color: var(--accent);
+            word-break: break-all;
+            font-family: 'SF Mono', 'Monaco', monospace;
+        }
+
+        .url-status {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .url-status.added {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Action Buttons */
+        .action-section {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 24px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        /* Message */
+        .message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-align: center;
+            display: none;
+        }
+
+        .message.info {
+            display: block;
+            background: #f0f9ff;
+            color: #0369a1;
+        }
+
+        .message.error {
+            display: block;
+            background: #fef2f2;
+            color: var(--error);
+        }
+
+        .message.success {
+            display: block;
+            background: #f0fdf4;
+            color: var(--success);
+        }
+
+        /* Footer Tips */
+        .tips {
+            margin-top: 24px;
+            padding: 16px;
+            background: #fffbeb;
+            border-radius: 10px;
+            border: 1px solid #fcd34d;
+        }
+
+        .tips-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #b45309;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tips-content {
+            font-size: 0.8rem;
+            color: #92400e;
+            line-height: 1.6;
+        }
+
+        /* Scrollbar */
+        .url-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .url-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .url-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-card {
+            animation: fadeIn 0.4s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔗 批量打开网址</h1>
+            <p>粘贴多个链接，一键在新标签页中打开</p>
+        </div>
+
+        <div class="main-card">
+            <!-- Input Area -->
+            <div class="input-section">
+                <div class="input-header">
+                    <span class="input-label">输入网址（每行一个）</span>
+                    <button class="clear-btn" id="clear-btn">清空</button>
+                </div>
+                <textarea id="url-input"
+                    placeholder="https://github.com&#10;https://google.com&#10;example.com&#10;&#10;支持换行、逗号、分号分隔"></textarea>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span>有效链接</span>
+                    <span class="stat-value" id="valid-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>重复</span>
+                    <span class="stat-value warning" id="dup-count">0</span>
+                </div>
+            </div>
+
+            <!-- URL Preview -->
+            <div class="preview-section">
+                <div class="preview-header">
+                    <span class="preview-title">链接预览</span>
+                    <button class="copy-list-btn" id="copy-list-btn">📋 复制列表</button>
+                </div>
+                <div class="url-list" id="url-list">
+                    <div class="empty-state">输入网址后在此预览</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-section">
+                <button class="btn btn-primary" id="open-btn" disabled>
+                    <span>🚀</span>
+                    <span id="btn-text">全部打开</span>
+                </button>
+            </div>
+
+            <!-- Message -->
+            <div class="message" id="message"></div>
+
+            <!-- Tips -->
+            <div class="tips">
+                <div class="tips-title">💡 使用提示</div>
+                <div class="tips-content">
+                    首次使用时，浏览器可能会拦截弹窗。请点击地址栏右侧的拦截提示，选择「始终允许此网站的弹出式窗口」。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const el = {
+            input: document.getElementById('url-input'),
+            openBtn: document.getElementById('open-btn'),
+            btnText: document.getElementById('btn-text'),
+            clearBtn: document.getElementById('clear-btn'),
+            copyListBtn: document.getElementById('copy-list-btn'),
+            validCount: document.getElementById('valid-count'),
+            dupCount: document.getElementById('dup-count'),
+            urlList: document.getElementById('url-list'),
+            message: document.getElementById('message')
+        };
+
+        // Process URLs from input
+        function processUrls(text) {
+            if (!text.trim()) return { unique: [], duplicates: 0 };
+
+            const rawUrls = text.split(/[\n,;]+/)
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map(line => {
+                    if (!/^https?:\/\//i.test(line)) {
+                        return 'https://' + line;
+                    }
+                    return line;
+                });
+
+            // Deduplicate
+            const seen = new Set();
+            const unique = [];
+            let duplicates = 0;
+
+            rawUrls.forEach(url => {
+                const normalized = url.toLowerCase();
+                if (seen.has(normalized)) {
+                    duplicates++;
+                } else {
+                    seen.add(normalized);
+                    unique.push(url);
+                }
+            });
+
+            return { unique, duplicates };
+        }
+
+        // Render URL list preview
+        function renderUrlList(urls) {
+            if (urls.length === 0) {
+                el.urlList.innerHTML = '<div class="empty-state">输入网址后在此预览</div>';
+                return;
+            }
+
+            el.urlList.innerHTML = urls.map((url, i) => `
+            <div class="url-item">
+                <span class="url-index">${i + 1}.</span>
+                <span class="url-text">${escapeHtml(url)}</span>
+            </div>
+        `).join('');
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Update UI state
+        function updateState() {
+            const { unique, duplicates } = processUrls(el.input.value);
+
+            el.validCount.textContent = unique.length;
+            el.dupCount.textContent = duplicates;
+
+            renderUrlList(unique);
+
+            if (unique.length > 0) {
+                el.openBtn.disabled = false;
+                el.btnText.textContent = `打开 ${unique.length} 个页面`;
+            } else {
+                el.openBtn.disabled = true;
+                el.btnText.textContent = '全部打开';
+            }
+
+            return unique;
+        }
+
+        // Show message
+        function showMessage(text, type = 'info') {
+            el.message.textContent = text;
+            el.message.className = `message ${type}`;
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    el.message.className = 'message';
+                }, 3000);
+            }
+        }
+
+        // Open all URLs
+        function openUrls() {
+            const urls = processUrls(el.input.value).unique;
+            if (urls.length === 0) return;
+
+            let blocked = 0;
+
+            urls.forEach((url, index) => {
+                setTimeout(() => {
+                    const win = window.open(url, '_blank');
+                    if (!win) {
+                        blocked++;
+                        showMessage(`${blocked} 个窗口被拦截，请在地址栏允许弹窗后重试`, 'error');
+                    }
+                }, index * 150);
+            });
+
+            // Show initial feedback
+            showMessage(`正在打开 ${urls.length} 个页面...`, 'info');
+        }
+
+        // Copy URL list to clipboard
+        function copyList() {
+            const urls = processUrls(el.input.value).unique;
+            if (urls.length === 0) return;
+
+            navigator.clipboard.writeText(urls.join('\n')).then(() => {
+                showMessage('已复制 ' + urls.length + ' 个链接到剪贴板', 'success');
+            });
+        }
+
+        // Clear input
+        function clearInput() {
+            el.input.value = '';
+            updateState();
+            el.message.className = 'message';
+            el.input.focus();
+        }
+
+        // Event listeners
+        el.input.addEventListener('input', updateState);
+        el.openBtn.addEventListener('click', openUrls);
+        el.clearBtn.addEventListener('click', clearInput);
+        el.copyListBtn.addEventListener('click', copyList);
+
+        // Initialize
+        el.input.focus();
+    </script>
+
+</body>
+
+</html>
