@@ -1,641 +1,1031 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spark SQL → Scala Converter</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spark SQL → Scala Converter</title>
+  <script src="https://cdn.jsdelivr.net/npm/sql-formatter@15.4.5/dist/sql-formatter.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
-  :root {
-    --bg-primary: #0a0e17;
-    --bg-secondary: #111827;
-    --bg-editor: #0d1117;
-    --bg-card: #161b26;
-    --border: #1e293b;
-    --text-primary: #e2e8f0;
-    --text-secondary: #94a3b8;
-    --text-muted: #475569;
-    --accent: #f97316;
-    --accent-glow: rgba(249, 115, 22, 0.15);
-    --accent-secondary: #06b6d4;
-    --green: #22c55e;
-    --keyword: #ff7b72;
-    --string: #a5d6ff;
-    --func: #d2a8ff;
-    --number: #79c0ff;
-    --comment: #8b949e;
-    --table-highlight: #ffa657;
-  }
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-editor: #0d1117;
+      --bg-card: #161b26;
+      --border: #1e293b;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #f97316;
+      --accent-glow: rgba(249, 115, 22, 0.15);
+      --accent-secondary: #06b6d4;
+      --green: #22c55e;
+      --keyword: #ff7b72;
+      --string: #a5d6ff;
+      --func: #d2a8ff;
+      --number: #79c0ff;
+      --comment: #8b949e;
+      --table-highlight: #ffa657;
+    }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  body {
-    font-family: 'IBM Plex Sans', sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-  .app { position: relative; z-index: 1; }
+    .app {
+      position: relative;
+      z-index: 1;
+    }
 
-  header {
-    padding: 24px 40px;
-    display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    background: rgba(10, 14, 23, 0.8);
-    backdrop-filter: blur(12px);
-    position: sticky; top: 0; z-index: 100;
-  }
+    header {
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 14, 23, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
-  .logo { display: flex; align-items: center; gap: 14px; }
-  .logo-icon {
-    width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--accent), #fb923c);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700; font-size: 16px; color: #000;
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-  .logo-text { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; }
-  .logo-text span { color: var(--accent); }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-  .header-badge {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
-    background: var(--bg-card); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
-  }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 16px;
+      color: #000;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
 
-  .main {
-    display: grid; grid-template-columns: 1fr 56px 1fr;
-    padding: 24px 40px; height: calc(100vh - 81px);
-  }
+    .logo-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 600;
+    }
 
-  .panel {
-    display: flex; flex-direction: column;
-    border: 1px solid var(--border); border-radius: 12px;
-    overflow: hidden; background: var(--bg-card); transition: border-color 0.3s;
-  }
-  .panel:focus-within { border-color: var(--accent); box-shadow: 0 0 30px var(--accent-glow); }
+    .logo-text span {
+      color: var(--accent);
+    }
 
-  .panel-header {
-    padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex-shrink: 0;
-  }
-  .panel-title {
-    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
-    color: var(--text-secondary); display: flex; align-items: center; gap: 8px;
-  }
-  .panel-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .dot-sql { background: var(--accent-secondary); box-shadow: 0 0 8px rgba(6, 182, 212, 0.4); }
-  .dot-scala { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    .header-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
 
-  .panel-actions { display: flex; gap: 6px; }
-  .btn-sm {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 5px 12px;
-    border-radius: 6px; border: 1px solid var(--border);
-    background: transparent; color: var(--text-secondary);
-    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px;
-  }
-  .btn-sm:hover { border-color: var(--text-secondary); color: var(--text-primary); background: rgba(255,255,255,0.03); }
-  .btn-sm.copied { border-color: var(--green); color: var(--green); }
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 56px 1fr;
+      padding: 24px 40px;
+      height: calc(100vh - 81px);
+    }
 
-  .editor-wrap { flex: 1; position: relative; overflow: hidden; }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-card);
+      transition: border-color 0.3s;
+    }
 
-  textarea {
-    width: 100%; height: 100%; background: var(--bg-editor); border: none;
-    color: var(--text-primary); font-family: 'JetBrains Mono', monospace;
-    font-size: 14px; line-height: 1.7; padding: 20px; resize: none; outline: none; tab-size: 2;
-  }
-  textarea::placeholder { color: var(--text-muted); }
+    .panel:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
 
-  .output-pre {
-    width: 100%; height: 100%; background: var(--bg-editor);
-    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.7;
-    padding: 20px; margin: 0; overflow: auto; white-space: pre-wrap;
-    word-break: break-all; color: var(--text-primary);
-  }
+    .panel-header {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
 
-  .empty-state {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    height: 100%; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
-    font-size: 13px; text-align: center; padding: 40px; gap: 12px;
-  }
-  .empty-icon { font-size: 32px; opacity: 0.3; }
+    .panel-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-  .arrow-col { display: flex; align-items: center; justify-content: center; }
-  .convert-btn {
-    width: 44px; height: 44px; border-radius: 50%;
-    border: 2px solid var(--accent); background: var(--bg-primary);
-    color: var(--accent); font-size: 18px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s; box-shadow: 0 0 20px var(--accent-glow);
-  }
-  .convert-btn:hover { background: var(--accent); color: #000; transform: scale(1.1); }
-  .convert-btn:active { transform: scale(0.95); }
+    .panel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
 
-  .panel-footer {
-    padding: 8px 18px; border-top: 1px solid var(--border); background: var(--bg-secondary);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
-    display: flex; justify-content: space-between; flex-shrink: 0;
-  }
-  .tables-found { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .table-tag {
-    background: rgba(255, 166, 87, 0.1); color: var(--table-highlight);
-    padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255, 166, 87, 0.2); font-size: 11px;
-  }
+    .dot-sql {
+      background: var(--accent-secondary);
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+    }
 
-  .options-bar {
-    padding: 12px 18px; border-top: 1px solid var(--border); background: var(--bg-secondary);
-    display: flex; gap: 16px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
-  }
-  .option-group { display: flex; align-items: center; gap: 8px; }
-  .option-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
+    .dot-scala {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
 
-  .toggle { position: relative; width: 36px; height: 20px; cursor: pointer; }
-  .toggle input { display: none; }
-  .toggle-track {
-    position: absolute; inset: 0; background: var(--bg-primary);
-    border: 1px solid var(--border); border-radius: 10px; transition: all 0.3s;
-  }
-  .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
-  .toggle-thumb {
-    position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
-    background: var(--text-secondary); border-radius: 50%; transition: all 0.3s; pointer-events: none;
-  }
-  .toggle input:checked ~ .toggle-thumb { left: 19px; background: #000; }
+    .panel-actions {
+      display: flex;
+      gap: 6px;
+    }
 
-  select {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    background: var(--bg-primary); color: var(--text-secondary);
-    border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; outline: none; cursor: pointer;
-  }
-  select:focus { border-color: var(--accent); }
+    .btn-sm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
-  .toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: var(--bg-card); border: 1px solid var(--green); color: var(--green);
-    padding: 10px 20px; border-radius: 8px;
-    font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 999;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
+    .btn-sm:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.03);
+    }
 
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .btn-sm.copied {
+      border-color: var(--green);
+      color: var(--green);
+    }
 
-  @media (max-width: 900px) {
-    .main { grid-template-columns: 1fr; grid-template-rows: 1fr auto 1fr; padding: 16px; height: auto; min-height: calc(100vh - 81px); }
-    header { padding: 16px 20px; }
-    .convert-btn { transform: rotate(90deg); }
-    .convert-btn:hover { transform: rotate(90deg) scale(1.1); }
-    .panel { min-height: 300px; }
-  }
-</style>
+    .btn-sm.format-btn {
+      border-color: var(--accent-secondary);
+      color: var(--accent-secondary);
+    }
+
+    .btn-sm.format-btn:hover {
+      background: rgba(6, 182, 212, 0.1);
+      border-color: var(--accent-secondary);
+      color: #22d3ee;
+    }
+
+    .btn-sm.format-btn.formatted {
+      border-color: var(--green);
+      color: var(--green);
+      transition: all 0.3s;
+    }
+
+    @keyframes formatPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 6px rgba(6, 182, 212, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+      }
+    }
+
+    .btn-sm.format-btn.formatted {
+      animation: formatPulse 0.6s ease-out;
+    }
+
+    .editor-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-editor);
+      border: none;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      padding: 20px;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    #outputWrap {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background: var(--bg-editor);
+    }
+
+    .output-pre {
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg-editor);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      padding: 20px;
+      margin: 0;
+      overflow: visible;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-primary);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      text-align: center;
+      padding: 40px;
+      gap: 12px;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      opacity: 0.3;
+    }
+
+    .arrow-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .convert-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--bg-primary);
+      color: var(--accent);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .convert-btn:hover {
+      background: var(--accent);
+      color: #000;
+      transform: scale(1.1);
+    }
+
+    .convert-btn:active {
+      transform: scale(0.95);
+    }
+
+    .panel-footer {
+      padding: 8px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .tables-found {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .table-tag {
+      background: rgba(255, 166, 87, 0.1);
+      color: var(--table-highlight);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 166, 87, 0.2);
+      font-size: 11px;
+    }
+
+    .options-bar {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .option-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      display: none;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: all 0.3s;
+    }
+
+    .toggle input:checked+.toggle-track {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    .toggle input:checked~.toggle-thumb {
+      left: 19px;
+      background: #000;
+    }
+
+    select {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    @media (max-width: 900px) {
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto 1fr;
+        padding: 16px;
+        height: auto;
+        min-height: calc(100vh - 81px);
+      }
+
+      header {
+        padding: 16px 20px;
+      }
+
+      .convert-btn {
+        transform: rotate(90deg);
+      }
+
+      .convert-btn:hover {
+        transform: rotate(90deg) scale(1.1);
+      }
+
+      .panel {
+        min-height: 300px;
+      }
+    }
+  </style>
 </head>
+
 <body>
-<div class="app">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">S→</div>
-      <div class="logo-text">Spark <span>SQL</span> → Scala</div>
-    </div>
-    <div class="header-badge">Zeppelin Style · v1.1</div>
-  </header>
+  <div class="app">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">S→</div>
+        <div class="logo-text">Spark <span>SQL</span> → Scala</div>
+      </div>
+      <div class="header-badge">Zeppelin Style · v1.1</div>
+    </header>
 
-  <div class="main">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title"><span class="panel-dot dot-sql"></span>INPUT · Spark SQL</div>
-        <div class="panel-actions">
-          <button class="btn-sm" onclick="loadExample()">⚡ Example</button>
-          <button class="btn-sm" onclick="clearInput()">✕ Clear</button>
+    <div class="main">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="panel-dot dot-sql"></span>INPUT · Spark SQL</div>
+          <div class="panel-actions">
+            <button class="btn-sm format-btn" id="formatBtn" onclick="formatSQL()" title="Format SQL (Ctrl+Shift+F)">🎨
+              Format</button>
+            <button class="btn-sm" onclick="loadExample()">⚡ Example</button>
+            <button class="btn-sm" onclick="clearInput()">✕ Clear</button>
+          </div>
+        </div>
+        <div class="editor-wrap">
+          <textarea id="sqlInput"
+            placeholder="-- 粘贴你的 Spark SQL ...&#10;-- 支持多表 JOIN, 子查询, CTE 等&#10;&#10;SELECT * FROM db.table LIMIT 10;"
+            spellcheck="false"></textarea>
+        </div>
+        <div class="options-bar">
+          <div class="option-group">
+            <span class="option-label">z.show()</span>
+            <label class="toggle"><input type="checkbox" id="optZshow" checked onchange="convert()">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="option-group">
+            <span class="option-label">提取表名变量</span>
+            <label class="toggle"><input type="checkbox" id="optExtract" checked onchange="convert()">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="option-group">
+            <span class="option-label">输出变量名</span>
+            <select id="optDfName" onchange="convert()">
+              <option value="df">df</option>
+              <option value="result">result</option>
+              <option value="data">data</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <span class="option-label">关键字</span>
+            <select id="optKeywordCase">
+              <option value="upper">大写</option>
+              <option value="lower">小写</option>
+              <option value="preserve">保持</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <span class="option-label">缩进</span>
+            <select id="optTabWidth">
+              <option value="2">2 空格</option>
+              <option value="4">4 空格</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span id="charCount">0 chars</span>
+          <span>Spark SQL</span>
         </div>
       </div>
-      <div class="editor-wrap">
-        <textarea id="sqlInput" placeholder="-- 粘贴你的 Spark SQL ...&#10;-- 支持多表 JOIN, 子查询, CTE 等&#10;&#10;SELECT * FROM db.table LIMIT 10;" spellcheck="false"></textarea>
-      </div>
-      <div class="options-bar">
-        <div class="option-group">
-          <span class="option-label">z.show()</span>
-          <label class="toggle"><input type="checkbox" id="optZshow" checked onchange="convert()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-        </div>
-        <div class="option-group">
-          <span class="option-label">提取表名变量</span>
-          <label class="toggle"><input type="checkbox" id="optExtract" checked onchange="convert()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-        </div>
-        <div class="option-group">
-          <span class="option-label">输出变量名</span>
-          <select id="optDfName" onchange="convert()"><option value="df">df</option><option value="result">result</option><option value="data">data</option></select>
-        </div>
-      </div>
-      <div class="panel-footer">
-        <span id="charCount">0 chars</span>
-        <span>Spark SQL</span>
-      </div>
-    </div>
 
-    <div class="arrow-col">
-      <button class="convert-btn" onclick="convert()" title="Convert (Ctrl+Enter)">→</button>
-    </div>
+      <div class="arrow-col">
+        <button class="convert-btn" onclick="convert()" title="Convert (Ctrl+Enter)">→</button>
+      </div>
 
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title"><span class="panel-dot dot-scala"></span>OUTPUT · Spark Scala</div>
-        <div class="panel-actions">
-          <button class="btn-sm" id="copyBtn" onclick="copyOutput()">📋 Copy</button>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="panel-dot dot-scala"></span>OUTPUT · Spark Scala</div>
+          <div class="panel-actions">
+            <button class="btn-sm" id="copyBtn" onclick="copyOutput()">📋 Copy</button>
+          </div>
         </div>
-      </div>
-      <div class="editor-wrap">
-        <div id="outputWrap">
-          <div class="empty-state"><div class="empty-icon">⚡</div><div>输入 SQL 后点击转换<br>或直接开始输入</div></div>
+        <div class="editor-wrap">
+          <div id="outputWrap">
+            <div class="empty-state">
+              <div class="empty-icon">⚡</div>
+              <div>输入 SQL 后点击转换<br>或直接开始输入</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="panel-footer">
-        <div class="tables-found" id="tablesFound"><span>tables: —</span></div>
-        <span>Scala · Zeppelin</span>
+        <div class="panel-footer">
+          <div class="tables-found" id="tablesFound"><span>tables: —</span></div>
+          <span>Scala · Zeppelin</span>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="toast" id="toast">✓ Copied to clipboard</div>
+  <div class="toast" id="toast">✓ Copied to clipboard</div>
 
-<script>
-let rawScalaCode = '';
+  <script>
+    let rawScalaCode = '';
 
-// ============================================
-// SQL Parser — extract table names
-// ============================================
-function extractTableNames(sql) {
-  // Strip comments
-  let cleaned = sql
-    .replace(/--.*$/gm, ' ')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    // ============================================
+    // SQL Parser — extract table names
+    // ============================================
+    function extractTableNames(sql) {
+      // Strip comments
+      let cleaned = sql
+        .replace(/--.*$/gm, ' ')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-  const tables = new Set();
-  const keywords = new Set([
-    'select','from','where','and','or','not','in','on','as',
-    'join','left','right','inner','outer','cross','full','natural',
-    'group','order','by','having','limit','offset','union','all',
-    'insert','into','update','delete','create','drop','alter',
-    'table','index','view','set','values','case','when','then',
-    'else','end','is','null','between','like','exists','distinct',
-    'asc','desc','with','recursive','if','lateral','true','false',
-    'over','partition','rows','range','unbounded','preceding','following',
-    'current','row','interval','temporary','temp','external','semi',
-    'anti','using','cast','substring','trim','count','sum','avg',
-    'min','max','coalesce','concat','date','int','string','bigint',
-    'double','float','boolean','array','map','struct'
-  ]);
+      const tables = new Set();
+      const keywords = new Set([
+        'select', 'from', 'where', 'and', 'or', 'not', 'in', 'on', 'as',
+        'join', 'left', 'right', 'inner', 'outer', 'cross', 'full', 'natural',
+        'group', 'order', 'by', 'having', 'limit', 'offset', 'union', 'all',
+        'insert', 'into', 'update', 'delete', 'create', 'drop', 'alter',
+        'table', 'index', 'view', 'set', 'values', 'case', 'when', 'then',
+        'else', 'end', 'is', 'null', 'between', 'like', 'exists', 'distinct',
+        'asc', 'desc', 'with', 'recursive', 'if', 'lateral', 'true', 'false',
+        'over', 'partition', 'rows', 'range', 'unbounded', 'preceding', 'following',
+        'current', 'row', 'interval', 'temporary', 'temp', 'external', 'semi',
+        'anti', 'using', 'cast', 'substring', 'trim', 'count', 'sum', 'avg',
+        'min', 'max', 'coalesce', 'concat', 'date', 'int', 'string', 'bigint',
+        'double', 'float', 'boolean', 'array', 'map', 'struct'
+      ]);
 
-  // Step 1: Match fully-qualified db.table names
-  const fqPatterns = [
-    /\bFROM\s+(\w+\.\w+)/gi,
-    /\bJOIN\s+(\w+\.\w+)/gi,
-    /\bINTO\s+(?:TABLE\s+)?(\w+\.\w+)/gi,
-    /\bUPDATE\s+(\w+\.\w+)/gi,
-  ];
+      // Step 1: Match fully-qualified db.table names
+      const fqPatterns = [
+        /\bFROM\s+(\w+\.\w+)/gi,
+        /\bJOIN\s+(\w+\.\w+)/gi,
+        /\bINTO\s+(?:TABLE\s+)?(\w+\.\w+)/gi,
+        /\bUPDATE\s+(\w+\.\w+)/gi,
+      ];
 
-  const dbPrefixes = new Set();
+      const dbPrefixes = new Set();
 
-  fqPatterns.forEach(pat => {
-    let m;
-    while ((m = pat.exec(cleaned)) !== null) {
-      tables.add(m[1]);
-      // Track the db prefix so we skip it as a standalone match
-      dbPrefixes.add(m[1].split('.')[0].toLowerCase());
-    }
-  });
+      fqPatterns.forEach(pat => {
+        let m;
+        while ((m = pat.exec(cleaned)) !== null) {
+          tables.add(m[1]);
+          // Track the db prefix so we skip it as a standalone match
+          dbPrefixes.add(m[1].split('.')[0].toLowerCase());
+        }
+      });
 
-  // Step 2: Match standalone table names (no dot), skip keywords & known db prefixes
-  const standalonePatterns = [
-    /\bFROM\s+([a-zA-Z_]\w*)\b(?!\s*\.)(?!\s*\()/gi,
-    /\bJOIN\s+([a-zA-Z_]\w*)\b(?!\s*\.)(?!\s*\()/gi,
-  ];
+      // Step 2: Match standalone table names (no dot), skip keywords & known db prefixes
+      const standalonePatterns = [
+        /\bFROM\s+([a-zA-Z_]\w*)\b(?!\s*\.)(?!\s*\()/gi,
+        /\bJOIN\s+([a-zA-Z_]\w*)\b(?!\s*\.)(?!\s*\()/gi,
+      ];
 
-  standalonePatterns.forEach(pat => {
-    let m;
-    while ((m = pat.exec(cleaned)) !== null) {
-      const name = m[1];
-      if (keywords.has(name.toLowerCase())) continue;
-      if (dbPrefixes.has(name.toLowerCase())) continue;
-      tables.add(name);
-    }
-  });
+      standalonePatterns.forEach(pat => {
+        let m;
+        while ((m = pat.exec(cleaned)) !== null) {
+          const name = m[1];
+          if (keywords.has(name.toLowerCase())) continue;
+          if (dbPrefixes.has(name.toLowerCase())) continue;
+          tables.add(name);
+        }
+      });
 
-  return [...tables];
-}
-
-function tableVarName(tableName, index, total) {
-  if (total === 1) return 'table';
-  const parts = tableName.split('.');
-  const name = parts[parts.length - 1];
-  if (name.length <= 25) return 'table_' + name;
-  return 'table' + (index + 1);
-}
-
-// ============================================
-// Convert SQL → Scala
-// ============================================
-function convert() {
-  const sql = document.getElementById('sqlInput').value.trim();
-  const outputWrap = document.getElementById('outputWrap');
-
-  if (!sql) {
-    outputWrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⚡</div><div>输入 SQL 后点击转换<br>或直接开始输入</div></div>';
-    document.getElementById('tablesFound').innerHTML = '<span>tables: —</span>';
-    rawScalaCode = '';
-    return;
-  }
-
-  const extractTables = document.getElementById('optExtract').checked;
-  const useZshow = document.getElementById('optZshow').checked;
-  const dfName = document.getElementById('optDfName').value;
-
-  const tables = extractTableNames(sql);
-  let code = '';
-  let modifiedSql = sql;
-
-  if (extractTables && tables.length > 0) {
-    code += '// 表名定义\n';
-    const varMap = [];
-    tables.forEach((t, i) => {
-      const vn = tableVarName(t, i, tables.length);
-      code += 'val ' + vn + ' = "' + t + '"\n';
-      varMap.push({ original: t, varName: vn });
-    });
-    code += '\n';
-
-    // Replace longest first to avoid partial matches
-    varMap.sort((a, b) => b.original.length - a.original.length);
-    varMap.forEach(({ original, varName }) => {
-      const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      modifiedSql = modifiedSql.replace(new RegExp(escaped, 'g'), '$' + varName);
-    });
-  }
-
-  const useInterp = extractTables && tables.length > 0;
-  code += 'val ' + dfName + ' = spark.sql(' + (useInterp ? 's' : '') + '"""\n';
-  modifiedSql.split('\n').forEach(line => { code += '  ' + line + '\n'; });
-  code += '""")\n';
-
-  if (useZshow) {
-    code += '\nz.show(' + dfName + ')';
-  }
-
-  rawScalaCode = code;
-  renderHighlighted(code, outputWrap);
-  updateTablesFound(tables);
-}
-
-// ============================================
-// Syntax Highlighting — DOM-based, no innerHTML injection
-// ============================================
-function renderHighlighted(code, container) {
-  const pre = document.createElement('pre');
-  pre.className = 'output-pre';
-
-  const lines = code.split('\n');
-  lines.forEach((line, i) => {
-    if (i > 0) pre.appendChild(document.createTextNode('\n'));
-
-    // Full-line comment
-    if (line.trimStart().startsWith('//')) {
-      appendSpan(pre, line, 'var(--comment)', true);
-      return;
+      return [...tables];
     }
 
-    colorizeLine(line, pre);
-  });
+    function tableVarName(tableName, index, total) {
+      if (total === 1) return 'table';
+      const parts = tableName.split('.');
+      const name = parts[parts.length - 1];
+      if (name.length <= 25) return 'table_' + name;
+      return 'table' + (index + 1);
+    }
 
-  container.innerHTML = '';
-  container.appendChild(pre);
-}
+    // ============================================
+    // Convert SQL → Scala
+    // ============================================
+    function convert() {
+      const sql = document.getElementById('sqlInput').value.trim();
+      const outputWrap = document.getElementById('outputWrap');
 
-function appendSpan(parent, text, color, italic) {
-  const s = document.createElement('span');
-  s.style.color = color;
-  if (italic) s.style.fontStyle = 'italic';
-  s.textContent = text;
-  parent.appendChild(s);
-  return s;
-}
-
-function colorizeLine(line, parent) {
-  // We process the line sequentially, finding the next "interesting" token
-  const scalaKw = /\b(val|var|def|class|object|import|if|else|for|while|match|case|return|new|type|trait|extends|with)\b/;
-  const builtins = /\b(spark|z)\b/;
-  const methods = /\.(sql|show)\b/;
-  const numbers = /\b(\d+)\b/;
-  const dollarVar = /\$([a-zA-Z_]\w*)/;
-  const tripleQuote = /s?"""/;
-  const doubleQuote = /("[^"]*")/;
-
-  let pos = 0;
-  let inTripleString = false;
-
-  while (pos < line.length) {
-    if (inTripleString) {
-      // Look for closing """
-      const closeIdx = line.indexOf('"""', pos);
-      if (closeIdx === -1) {
-        // Rest of line is string
-        colorizeStringPart(line.slice(pos), parent);
-        pos = line.length;
-      } else {
-        colorizeStringPart(line.slice(pos, closeIdx), parent);
-        appendSpan(parent, '"""', 'var(--string)', false);
-        pos = closeIdx + 3;
-        inTripleString = false;
+      if (!sql) {
+        outputWrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⚡</div><div>输入 SQL 后点击转换<br>或直接开始输入</div></div>';
+        document.getElementById('tablesFound').innerHTML = '<span>tables: —</span>';
+        rawScalaCode = '';
+        return;
       }
-      continue;
+
+      const extractTables = document.getElementById('optExtract').checked;
+      const useZshow = document.getElementById('optZshow').checked;
+      const dfName = document.getElementById('optDfName').value;
+
+      const tables = extractTableNames(sql);
+      let code = '';
+      let modifiedSql = sql;
+
+      if (extractTables && tables.length > 0) {
+        code += '// 表名定义\n';
+        const varMap = [];
+        tables.forEach((t, i) => {
+          const vn = tableVarName(t, i, tables.length);
+          code += 'val ' + vn + ' = "' + t + '"\n';
+          varMap.push({ original: t, varName: vn });
+        });
+        code += '\n';
+
+        // Replace longest first to avoid partial matches
+        varMap.sort((a, b) => b.original.length - a.original.length);
+        varMap.forEach(({ original, varName }) => {
+          const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          // Use word boundaries to prevent matching substrings inside other identifiers
+          // e.g. CTE alias "a" should not match the "a" inside "brand", "start_time", etc.
+          modifiedSql = modifiedSql.replace(new RegExp('\\b' + escaped + '\\b', 'g'), '$' + varName);
+        });
+      }
+
+      const useInterp = extractTables && tables.length > 0;
+      code += 'val ' + dfName + ' = spark.sql(' + (useInterp ? 's' : '') + '"""\n';
+      modifiedSql.split('\n').forEach(line => { code += '  ' + line + '\n'; });
+      code += '""")\n';
+
+      if (useZshow) {
+        code += '\nz.show(' + dfName + ')';
+      }
+
+      rawScalaCode = code;
+      renderHighlighted(code, outputWrap);
+      updateTablesFound(tables);
     }
 
-    // Check for triple-quoted string start: s""" or """
-    const tripleMatch = line.slice(pos).match(/^(s?""")/)
-    if (tripleMatch) {
-      appendSpan(parent, tripleMatch[1], 'var(--string)', false);
-      pos += tripleMatch[1].length;
-      inTripleString = true;
-      continue;
+    // ============================================
+    // Syntax Highlighting — DOM-based, no innerHTML injection
+    // ============================================
+    function renderHighlighted(code, container) {
+      const pre = document.createElement('pre');
+      pre.className = 'output-pre';
+
+      const lines = code.split('\n');
+      lines.forEach((line, i) => {
+        if (i > 0) pre.appendChild(document.createTextNode('\n'));
+
+        // Full-line comment
+        if (line.trimStart().startsWith('//')) {
+          appendSpan(pre, line, 'var(--comment)', true);
+          return;
+        }
+
+        colorizeLine(line, pre);
+      });
+
+      container.innerHTML = '';
+      container.appendChild(pre);
     }
 
-    // Check for double-quoted string
-    const dqMatch = line.slice(pos).match(/^"([^"]*)"/)
-    if (dqMatch) {
-      appendSpan(parent, dqMatch[0], 'var(--string)', false);
-      pos += dqMatch[0].length;
-      continue;
+    function appendSpan(parent, text, color, italic) {
+      const s = document.createElement('span');
+      s.style.color = color;
+      if (italic) s.style.fontStyle = 'italic';
+      s.textContent = text;
+      parent.appendChild(s);
+      return s;
     }
 
-    // Scala keyword
-    const kwMatch = line.slice(pos).match(new RegExp('^' + scalaKw.source));
-    if (kwMatch && isWordBoundary(line, pos, kwMatch[0].length)) {
-      const s = appendSpan(parent, kwMatch[1], 'var(--keyword)', false);
-      s.style.fontWeight = '500';
-      pos += kwMatch[1].length;
-      continue;
+    function colorizeLine(line, parent) {
+      // We process the line sequentially, finding the next "interesting" token
+      const scalaKw = /\b(val|var|def|class|object|import|if|else|for|while|match|case|return|new|type|trait|extends|with)\b/;
+      const builtins = /\b(spark|z)\b/;
+      const methods = /\.(sql|show)\b/;
+      const numbers = /\b(\d+)\b/;
+      const dollarVar = /\$([a-zA-Z_]\w*)/;
+      const tripleQuote = /s?"""/;
+      const doubleQuote = /("[^"]*")/;
+
+      let pos = 0;
+      let inTripleString = false;
+
+      while (pos < line.length) {
+        if (inTripleString) {
+          // Look for closing """
+          const closeIdx = line.indexOf('"""', pos);
+          if (closeIdx === -1) {
+            // Rest of line is string
+            colorizeStringPart(line.slice(pos), parent);
+            pos = line.length;
+          } else {
+            colorizeStringPart(line.slice(pos, closeIdx), parent);
+            appendSpan(parent, '"""', 'var(--string)', false);
+            pos = closeIdx + 3;
+            inTripleString = false;
+          }
+          continue;
+        }
+
+        // Check for triple-quoted string start: s""" or """
+        const tripleMatch = line.slice(pos).match(/^(s?""")/)
+        if (tripleMatch) {
+          appendSpan(parent, tripleMatch[1], 'var(--string)', false);
+          pos += tripleMatch[1].length;
+          inTripleString = true;
+          continue;
+        }
+
+        // Check for double-quoted string
+        const dqMatch = line.slice(pos).match(/^"([^"]*)"/)
+        if (dqMatch) {
+          appendSpan(parent, dqMatch[0], 'var(--string)', false);
+          pos += dqMatch[0].length;
+          continue;
+        }
+
+        // Scala keyword
+        const kwMatch = line.slice(pos).match(new RegExp('^' + scalaKw.source));
+        if (kwMatch && isWordBoundary(line, pos, kwMatch[0].length)) {
+          const s = appendSpan(parent, kwMatch[1], 'var(--keyword)', false);
+          s.style.fontWeight = '500';
+          pos += kwMatch[1].length;
+          continue;
+        }
+
+        // Builtins: spark, z
+        const biMatch = line.slice(pos).match(new RegExp('^' + builtins.source));
+        if (biMatch && isWordBoundary(line, pos, biMatch[0].length)) {
+          appendSpan(parent, biMatch[1], 'var(--func)', false);
+          pos += biMatch[1].length;
+          continue;
+        }
+
+        // .sql .show
+        const mtMatch = line.slice(pos).match(/^\.(sql|show)\b/);
+        if (mtMatch) {
+          parent.appendChild(document.createTextNode('.'));
+          appendSpan(parent, mtMatch[1], 'var(--func)', false);
+          pos += mtMatch[0].length;
+          continue;
+        }
+
+        // Numbers
+        const numMatch = line.slice(pos).match(/^(\d+)\b/);
+        if (numMatch && isWordBoundaryLeft(line, pos)) {
+          appendSpan(parent, numMatch[1], 'var(--number)', false);
+          pos += numMatch[1].length;
+          continue;
+        }
+
+        // Plain character
+        parent.appendChild(document.createTextNode(line[pos]));
+        pos++;
+      }
     }
 
-    // Builtins: spark, z
-    const biMatch = line.slice(pos).match(new RegExp('^' + builtins.source));
-    if (biMatch && isWordBoundary(line, pos, biMatch[0].length)) {
-      appendSpan(parent, biMatch[1], 'var(--func)', false);
-      pos += biMatch[1].length;
-      continue;
+    // Colorize inside triple-quoted strings: $var gets highlighted
+    function colorizeStringPart(text, parent) {
+      const varRe = /\$([a-zA-Z_]\w*)/g;
+      let last = 0;
+      let m;
+      while ((m = varRe.exec(text)) !== null) {
+        if (m.index > last) {
+          appendSpan(parent, text.slice(last, m.index), 'var(--string)', false);
+        }
+        const s = appendSpan(parent, m[0], 'var(--table-highlight)', false);
+        s.style.fontWeight = '500';
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) {
+        appendSpan(parent, text.slice(last), 'var(--string)', false);
+      }
     }
 
-    // .sql .show
-    const mtMatch = line.slice(pos).match(/^\.(sql|show)\b/);
-    if (mtMatch) {
-      parent.appendChild(document.createTextNode('.'));
-      appendSpan(parent, mtMatch[1], 'var(--func)', false);
-      pos += mtMatch[0].length;
-      continue;
+    function isWordBoundary(line, pos, len) {
+      const before = pos > 0 ? line[pos - 1] : ' ';
+      const after = pos + len < line.length ? line[pos + len] : ' ';
+      return !/\w/.test(before) && !/\w/.test(after);
     }
 
-    // Numbers
-    const numMatch = line.slice(pos).match(/^(\d+)\b/);
-    if (numMatch && isWordBoundaryLeft(line, pos)) {
-      appendSpan(parent, numMatch[1], 'var(--number)', false);
-      pos += numMatch[1].length;
-      continue;
+    function isWordBoundaryLeft(line, pos) {
+      return pos === 0 || !/\w/.test(line[pos - 1]);
     }
 
-    // Plain character
-    parent.appendChild(document.createTextNode(line[pos]));
-    pos++;
-  }
-}
-
-// Colorize inside triple-quoted strings: $var gets highlighted
-function colorizeStringPart(text, parent) {
-  const varRe = /\$([a-zA-Z_]\w*)/g;
-  let last = 0;
-  let m;
-  while ((m = varRe.exec(text)) !== null) {
-    if (m.index > last) {
-      appendSpan(parent, text.slice(last, m.index), 'var(--string)', false);
+    function updateTablesFound(tables) {
+      const c = document.getElementById('tablesFound');
+      if (!tables.length) {
+        c.innerHTML = '<span>tables: none detected</span>';
+      } else {
+        let html = '<span>tables(' + tables.length + '):</span>';
+        tables.forEach(t => {
+          html += '<span class="table-tag">' + t.replace(/</g, '&lt;') + '</span>';
+        });
+        c.innerHTML = html;
+      }
     }
-    const s = appendSpan(parent, m[0], 'var(--table-highlight)', false);
-    s.style.fontWeight = '500';
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) {
-    appendSpan(parent, text.slice(last), 'var(--string)', false);
-  }
-}
 
-function isWordBoundary(line, pos, len) {
-  const before = pos > 0 ? line[pos - 1] : ' ';
-  const after = pos + len < line.length ? line[pos + len] : ' ';
-  return !/\w/.test(before) && !/\w/.test(after);
-}
+    // ============================================
+    // SQL Formatter (powered by sql-formatter)
+    // ============================================
+    function formatSQL() {
+      const input = document.getElementById('sqlInput');
+      const sql = input.value.trim();
+      if (!sql) return;
 
-function isWordBoundaryLeft(line, pos) {
-  return pos === 0 || !/\w/.test(line[pos - 1]);
-}
+      try {
+        const keywordCase = document.getElementById('optKeywordCase').value;
+        const tabWidth = parseInt(document.getElementById('optTabWidth').value, 10);
 
-function updateTablesFound(tables) {
-  const c = document.getElementById('tablesFound');
-  if (!tables.length) {
-    c.innerHTML = '<span>tables: none detected</span>';
-  } else {
-    let html = '<span>tables(' + tables.length + '):</span>';
-    tables.forEach(t => {
-      html += '<span class="table-tag">' + t.replace(/</g, '&lt;') + '</span>';
+        const formatted = sqlFormatter.format(sql, {
+          language: 'spark',
+          tabWidth: tabWidth,
+          keywordCase: keywordCase,
+          dataTypeCase: keywordCase === 'preserve' ? 'preserve' : keywordCase,
+          functionCase: keywordCase === 'preserve' ? 'preserve' : keywordCase,
+          linesBetweenQueries: 2,
+          denseOperators: false,
+        });
+
+        input.value = formatted;
+        updateCharCount();
+        convert();
+
+        // Visual feedback
+        const btn = document.getElementById('formatBtn');
+        btn.classList.add('formatted');
+        btn.textContent = '✓ Formatted';
+        setTimeout(() => { btn.classList.remove('formatted'); btn.textContent = '🎨 Format'; }, 1500);
+      } catch (e) {
+        console.error('Format error:', e);
+        // Show error toast
+        const toast = document.getElementById('toast');
+        toast.style.borderColor = 'var(--keyword)';
+        toast.style.color = 'var(--keyword)';
+        toast.textContent = '⚠ 格式化失败: SQL 语法可能有误';
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+          toast.style.borderColor = '';
+          toast.style.color = '';
+          toast.textContent = '✓ Copied to clipboard';
+        }, 2500);
+      }
+    }
+
+    // ============================================
+    // Actions
+    // ============================================
+    function copyOutput() {
+      if (!rawScalaCode) return;
+      function onSuccess() {
+        const btn = document.getElementById('copyBtn');
+        btn.classList.add('copied'); btn.textContent = '✓ Copied';
+        document.getElementById('toast').classList.add('show');
+        setTimeout(() => document.getElementById('toast').classList.remove('show'), 2000);
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy'; }, 2000);
+      }
+      // Try modern clipboard API first, fallback to execCommand
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rawScalaCode).then(onSuccess).catch(() => fallbackCopy());
+      } else {
+        fallbackCopy();
+      }
+      function fallbackCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = rawScalaCode;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); onSuccess(); }
+        catch (e) { alert('复制失败，请手动选中输出内容复制'); }
+        document.body.removeChild(ta);
+      }
+    }
+
+    function clearInput() {
+      document.getElementById('sqlInput').value = '';
+      document.getElementById('charCount').textContent = '0 chars';
+      convert();
+    }
+
+    function loadExample() {
+      const examples = [
+        'select * from ydy_dw_db01.tmp_ds_20260210_01 limit 3;',
+        'SELECT a.user_id, a.name, b.order_count\nFROM ydy_dw_db01.dim_user a\nLEFT JOIN ydy_dw_db01.fact_orders b\n  ON a.user_id = b.user_id\nWHERE b.order_count > 10\nORDER BY b.order_count DESC\nLIMIT 100;',
+        'WITH active_users AS (\n  SELECT user_id, count(*) as cnt\n  FROM ydy_dw_db01.event_log\n  WHERE dt >= \'2026-01-01\'\n  GROUP BY user_id\n  HAVING count(*) > 5\n)\nSELECT u.*, a.cnt\nFROM ydy_dw_db01.dim_user u\nJOIN active_users a ON u.user_id = a.user_id\nORDER BY a.cnt DESC;',
+        'SELECT\n  t1.dept_name,\n  t2.total_salary,\n  t3.headcount\nFROM hr_db.department t1\nJOIN (\n  SELECT dept_id, sum(salary) as total_salary\n  FROM hr_db.employee\n  GROUP BY dept_id\n) t2 ON t1.dept_id = t2.dept_id\nJOIN (\n  SELECT dept_id, count(*) as headcount\n  FROM hr_db.employee\n  GROUP BY dept_id\n) t3 ON t1.dept_id = t3.dept_id\nORDER BY t2.total_salary DESC;'
+      ];
+      document.getElementById('sqlInput').value = examples[Math.floor(Math.random() * examples.length)];
+      updateCharCount();
+      convert();
+    }
+
+    function updateCharCount() {
+      document.getElementById('charCount').textContent = document.getElementById('sqlInput').value.length + ' chars';
+    }
+
+    // ============================================
+    // Events
+    // ============================================
+    document.getElementById('sqlInput').addEventListener('input', () => { updateCharCount(); convert(); });
+
+    document.getElementById('sqlInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const ta = e.target, s = ta.selectionStart;
+        ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = s + 2;
+        convert();
+      }
     });
-    c.innerHTML = html;
-  }
-}
 
-// ============================================
-// Actions
-// ============================================
-function copyOutput() {
-  if (!rawScalaCode) return;
-  function onSuccess() {
-    const btn = document.getElementById('copyBtn');
-    btn.classList.add('copied'); btn.textContent = '✓ Copied';
-    document.getElementById('toast').classList.add('show');
-    setTimeout(() => document.getElementById('toast').classList.remove('show'), 2000);
-    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy'; }, 2000);
-  }
-  // Try modern clipboard API first, fallback to execCommand
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(rawScalaCode).then(onSuccess).catch(() => fallbackCopy());
-  } else {
-    fallbackCopy();
-  }
-  function fallbackCopy() {
-    const ta = document.createElement('textarea');
-    ta.value = rawScalaCode;
-    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); onSuccess(); }
-    catch(e) { alert('复制失败，请手动选中输出内容复制'); }
-    document.body.removeChild(ta);
-  }
-}
-
-function clearInput() {
-  document.getElementById('sqlInput').value = '';
-  document.getElementById('charCount').textContent = '0 chars';
-  convert();
-}
-
-function loadExample() {
-  const examples = [
-    'select * from ydy_dw_db01.tmp_ds_20260210_01 limit 3;',
-    'SELECT a.user_id, a.name, b.order_count\nFROM ydy_dw_db01.dim_user a\nLEFT JOIN ydy_dw_db01.fact_orders b\n  ON a.user_id = b.user_id\nWHERE b.order_count > 10\nORDER BY b.order_count DESC\nLIMIT 100;',
-    'WITH active_users AS (\n  SELECT user_id, count(*) as cnt\n  FROM ydy_dw_db01.event_log\n  WHERE dt >= \'2026-01-01\'\n  GROUP BY user_id\n  HAVING count(*) > 5\n)\nSELECT u.*, a.cnt\nFROM ydy_dw_db01.dim_user u\nJOIN active_users a ON u.user_id = a.user_id\nORDER BY a.cnt DESC;',
-    'SELECT\n  t1.dept_name,\n  t2.total_salary,\n  t3.headcount\nFROM hr_db.department t1\nJOIN (\n  SELECT dept_id, sum(salary) as total_salary\n  FROM hr_db.employee\n  GROUP BY dept_id\n) t2 ON t1.dept_id = t2.dept_id\nJOIN (\n  SELECT dept_id, count(*) as headcount\n  FROM hr_db.employee\n  GROUP BY dept_id\n) t3 ON t1.dept_id = t3.dept_id\nORDER BY t2.total_salary DESC;'
-  ];
-  document.getElementById('sqlInput').value = examples[Math.floor(Math.random() * examples.length)];
-  updateCharCount();
-  convert();
-}
-
-function updateCharCount() {
-  document.getElementById('charCount').textContent = document.getElementById('sqlInput').value.length + ' chars';
-}
-
-// ============================================
-// Events
-// ============================================
-document.getElementById('sqlInput').addEventListener('input', () => { updateCharCount(); convert(); });
-
-document.getElementById('sqlInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const ta = e.target, s = ta.selectionStart;
-    ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(ta.selectionEnd);
-    ta.selectionStart = ta.selectionEnd = s + 2;
-    convert();
-  }
-});
-
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') convert();
-});
-</script>
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') convert();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        formatSQL();
+      }
+    });
+  </script>
 </body>
+
 </html>
