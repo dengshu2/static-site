@@ -4,258 +4,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Static Apps Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: #f3f4f6;
-            color: #1f2937;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .header p {
-            color: #6b7280;
-            font-size: 1.1rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            position: relative;
-            overflow: hidden;
-            animation: fadeInUp 0.8s ease-out backwards;
-        }
-
-        .card:nth-child(1) {
-            animation-delay: 0.1s;
-            border-top: 4px solid #3B82F6;
-        }
-
-        .card:nth-child(2) {
-            animation-delay: 0.2s;
-            border-top: 4px solid #81c784;
-        }
-
-        .card:nth-child(3) {
-            animation-delay: 0.3s;
-            border-top: 4px solid #9333ea;
-        }
-
-        .card:nth-child(4) {
-            animation-delay: 0.4s;
-            border-top: 4px solid #f97316;
-        }
-
-        .card:nth-child(5) {
-            animation-delay: 0.5s;
-            border-top: 4px solid #ef4444;
-        }
-
-        .card:nth-child(6) {
-            animation-delay: 0.6s;
-            border-top: 4px solid #06b6d4;
-        }
-
-        .card:nth-child(7) {
-            animation-delay: 0.7s;
-            border-top: 4px solid #db2777;
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-
-        .icon {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: 12px;
-            transition: transform 0.3s ease;
-        }
-
-        .card:hover .icon {
-            transform: rotate(5deg) scale(1.1);
-            background: #eff6ff;
-        }
-
-        .card h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #111827;
-        }
-
-        .card p {
-            color: #6b7280;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            flex-grow: 1;
-        }
-
-        .arrow {
-            margin-top: 20px;
-            color: #2563eb;
-            font-weight: 600;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            opacity: 0;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-        }
-
-        .card:hover .arrow {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .footer {
-            margin-top: 80px;
-            text-align: center;
-            color: #9ca3af;
-            font-size: 0.8rem;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
+    <title>Static Apps - 极简开发者工具集</title>
+    <meta name="description" content="开发者和超级用户的轻量级静态工具精选集。无追踪，无广告，只有纯粹的功能。">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Favicon placeholder (using emoji) -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 </head>
 
 <body>
 
-    <div class="header">
-        <h1>Static Apps</h1>
-        <p>Your personal collection of single-file tools.</p>
-    </div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <span style="font-size: 1.5rem;">⚡</span> Static Apps
+            </a>
+            <div class="nav-links">
+                <a href="#features">工具列表</a>
+                <a href="#about">关于</a>
+                <a href="https://github.com/dengshu2/static-site" target="_blank" rel="noopener">GitHub</a>
+            </div>
+            <a href="#features" class="nav-button">开始使用</a>
+        </div>
+    </nav>
 
-    <div class="grid">
-        <!-- Card 1: AI Answer -->
-        <a href="ai_anwser.html" class="card">
-            <div class="icon">🧠</div>
-            <h2>AI Insights Archive</h2>
-            <p>暗黑科技风格的问答档案。收录关于未来的残酷真相与高级洞察。支持卡片导出。</p>
-            <div class="arrow">View Archive →</div>
-        </a>
+    <!-- Hero Section -->
+    <header class="section hero">
+        <div class="container hero-content">
+            <span class="hero-pill">v2.0 现已发布</span>
+            <h1>
+                你的个人 <br>
+                <span class="text-gradient">效率工作台</span>
+            </h1>
+            <p>
+                一系列强大的隐私优先静态工具。
+                无服务端处理，无追踪，纯粹的前端实用程序。
+            </p>
+            <div class="hero-actions">
+                <a href="#features" class="btn btn-primary">探索工具</a>
+                <a href="https://github.com/dengshu2/static-site" target="_blank" class="btn btn-secondary">查看源码</a>
+            </div>
+        </div>
+    </header>
 
-        <!-- Card 2: Zen -->
-        <a href="zen.html" class="card">
-            <div class="icon">🌿</div>
-            <h2>Zen Timer</h2>
-            <p>极简主义的时间记录器。记录你坚持习惯的每一天，随时间变化的主题色。</p>
-            <div class="arrow">Open Timer →</div>
-        </a>
+    <!-- Social Proof -->
+    <section class="social-proof">
+        <div class="container">
+            <p class="proof-text">深受极简主义者信赖</p>
+            <div class="proof-logos">
+                <span>简单.</span>
+                <span>快速.</span>
+                <span>安全.</span>
+                <span>离线优先.</span>
+            </div>
+        </div>
+    </section>
 
-        <!-- Card 3: Password Generator -->
-        <a href="password_create.html" class="card">
-            <div class="icon">🔐</div>
-            <h2>Password Generator</h2>
-            <p>极简密码生成器。自定义长度与字符类型，一键生成安全随机密码。</p>
-            <div class="arrow">Generate Password →</div>
-        </a>
+    <!-- Features Grid -->
+    <section id="features" class="section features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>工具箱</h2>
+                <p>你需要的一切，没有多余的干扰。</p>
+            </div>
 
-        <!-- Card 4: How to Learn -->
-        <a href="how_to_learn.html" class="card">
-            <div class="icon">📚</div>
-            <h2>认知科学学习 SOP</h2>
-            <p>给大脑装系统的说明书。基于认知科学的高效学习流程，包含信息过滤、高强度编码、输出测试和物理固化四步法。</p>
-            <div class="arrow">开始学习 →</div>
-        </a>
+            <div class="features-grid">
+                <!-- Card 1: AI Answer -->
+                <a href="ai_anwser.html" class="feature-card accent-blue">
+                    <div class="feature-icon-wrapper">🧠</div>
+                    <h3>AI 洞察档案</h3>
+                    <p>暗黑科技风格的问答档案。收录关于未来的残酷真相与高级洞察。支持卡片导出。</p>
+                    <span class="feature-link">打开档案 →</span>
+                </a>
 
-        <!-- Card 5: Speed Reader RSVP -->
-        <a href="RSVP.html" class="card">
-            <div class="icon">⚡</div>
-            <h2>Speed Reader RSVP</h2>
-            <p>基于 RSVP (Rapid Serial Visual Presentation) 的速读训练工具。消除眼球移动，突破阅读速度瓶颈。</p>
-            <div class="arrow">开始速读 →</div>
-        </a>
+                <!-- Card 2: Zen -->
+                <a href="zen.html" class="feature-card accent-green">
+                    <div class="feature-icon-wrapper">🌿</div>
+                    <h3>Zen 禅意计时</h3>
+                    <p>极简主义的时间记录器。记录你坚持习惯的每一天，随时间变化的主题色。</p>
+                    <span class="feature-link">开始计时 →</span>
+                </a>
 
-        <!-- Card 6: Batch URL Opener -->
-        <a href="url_opener.html" class="card">
-            <div class="icon">🔗</div>
-            <h2>Batch URL Opener</h2>
-            <p>极简网址批量打开器。粘贴多个链接，一键唤醒所有目标页面，提升信息获取效率。</p>
-            <div class="arrow">开始使用 →</div>
-        </a>
+                <!-- Card 3: Password Generator -->
+                <a href="password_create.html" class="feature-card accent-purple">
+                    <div class="feature-icon-wrapper">🔐</div>
+                    <h3>密码生成器</h3>
+                    <p>客户端安全密码生成。自定义长度与字符类型，一键生成安全随机密码。</p>
+                    <span class="feature-link">安全生成 →</span>
+                </a>
 
-        <!-- Card 7: Spark SQL Converter -->
-        <a href="spark-sql-converter.html" class="card">
-            <div class="icon">🔄</div>
-            <h2>Spark SQL Converter</h2>
-            <p>Spark SQL 转 Scala 代码工具。自动提取表名并生成变量，适配 Zeppelin 笔记本开发模式。</p>
-            <div class="arrow">Start Converting →</div>
-        </a>
-    </div>
+                <!-- Card 4: How to Learn -->
+                <a href="how_to_learn.html" class="feature-card accent-orange">
+                    <div class="feature-icon-wrapper">📚</div>
+                    <h3>认知科学学习法</h3>
+                    <p>给大脑装系统的说明书。基于认知科学的高效学习流程。</p>
+                    <span class="feature-link">学习如何学习 →</span>
+                </a>
 
-    <div class="footer">
-        Powered by Static Web Server • Deployed with Docker
-    </div>
+                <!-- Card 5: Speed Reader RSVP -->
+                <a href="RSVP.html" class="feature-card accent-red">
+                    <div class="feature-icon-wrapper">⚡</div>
+                    <h3>RSVP 速读训练</h3>
+                    <p>基于 RSVP (快速序列视觉呈现) 的速读工具。消除眼球移动，突破阅读速度瓶颈。</p>
+                    <span class="feature-link">开始速读 →</span>
+                </a>
+
+                <!-- Card 6: Batch URL Opener -->
+                <a href="url_opener.html" class="feature-card accent-cyan">
+                    <div class="feature-icon-wrapper">🔗</div>
+                    <h3>批量网址打开器</h3>
+                    <p>粘贴多个链接，一键唤醒所有目标页面，提升信息获取效率。</p>
+                    <span class="feature-link">批量打开 →</span>
+                </a>
+
+                <!-- Card 7: Spark SQL Converter -->
+                <a href="spark-sql-converter.html" class="feature-card accent-pink">
+                    <div class="feature-icon-wrapper">🔄</div>
+                    <h3>Spark SQL 转换器</h3>
+                    <p>Spark SQL 转 Scala 代码工具。自动提取表名并生成变量，适配 Zeppelin。</p>
+                    <span class="feature-link">转换代码 →</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="container">
+        <div class="cta-section">
+            <div class="cta-content">
+                <h2>准备好提升你的效率了吗？</h2>
+                <p>所有工具免费、开源，并且完全在你的浏览器中运行。</p>
+                <a href="https://github.com/dengshu2/static-site" class="btn btn-secondary"
+                    style="background: white; color: var(--primary);">在 GitHub 上 Star</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h4>Static Apps</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        构建网络，一次一个静态文件。
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>工具</h4>
+                    <ul>
+                        <li><a href="ai_anwser.html">AI 洞察</a></li>
+                        <li><a href="zen.html">Zen 计时</a></li>
+                        <li><a href="password_create.html">密码生成</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>资源</h4>
+                    <ul>
+                        <li><a href="how_to_learn.html">学习方法</a></li>
+                        <li><a href="#">文档</a></li>
+                        <li><a href="#">隐私协议</a></li>
+                    </ul>
+                </div>
+                <!-- Connect section removed as per user request -->
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Static Apps Collection. Deployed with Docker.</p>
+            </div>
+        </div>
+    </footer>
 
 </body>
 
