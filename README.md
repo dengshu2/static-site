@@ -1,11 +1,46 @@
-# Static Site
+# Prompt Library — 用提示词复现工具
 
-使用 Docker Compose 部署的静态网站服务。
+一个静态工具集，每个工具都附带生成它的大模型提示词。复制提示词，粘贴给 Claude、GPT 或 Gemini，即可得到同类工具的完整代码。
+
+🔗 **在线访问**：通过 Nginx Proxy Manager 代理对外提供服务
+
+---
+
+## 工具列表
+
+| 工具 | 描述 | 提示词 |
+|------|------|--------|
+| [小票物理模拟](html/receipt-physics.html) | Three.js + Verlet 积分的交互式热敏纸小票，支持抓取拖拽弯曲 | ✅ 有（Claude Sonnet 4.6） |
+| [AI 洞察档案](html/ai_anwser.html) | 暗黑科技风格的问答档案，支持卡片导出 | 🕐 待补充 |
+| [Zen 禅意计时](html/zen.html) | 极简习惯打卡记录器，随时间变化的主题色 | 🕐 待补充 |
+| [密码生成器](html/password_create.html) | 客户端安全密码生成，自定义长度与字符类型 | 🕐 待补充 |
+| [认知科学学习法](html/how_to_learn.html) | 基于认知科学的高效学习流程图解 | 🕐 待补充 |
+| [RSVP 速读训练](html/RSVP.html) | 快速序列视觉呈现速读工具，消除眼球移动 | 🕐 待补充 |
+| [批量网址打开器](html/url_opener.html) | 粘贴多个链接，一键批量打开 | 🕐 待补充 |
+| [Spark SQL 转换器](html/spark-sql-converter.html) | Spark SQL 转 Scala 代码，适配 Zeppelin | 🕐 待补充 |
+
+---
+
+## 如何贡献提示词
+
+如果你用大模型复现了某个工具，欢迎提交对应的提示词：
+
+1. Fork 本仓库
+2. 编辑 `html/index.html`，找到对应的工具卡片
+3. 将 `<p class="prompt-pending">` 替换为 `<pre class="prompt-pre">` 加入提示词内容
+4. 提交 Pull Request，标题格式：`feat: 补充 [工具名] 提示词`
+
+或者直接 [提交 Issue](https://github.com/dengshu2/static-site/issues) 附上提示词文本。
+
+---
 
 ## 技术栈
 
-- [static-web-server](https://github.com/static-web-server/static-web-server) - 高性能、轻量级的静态文件服务器
-- Docker Compose
+- [static-web-server](https://github.com/static-web-server/static-web-server) `v2.41.0` — 高性能轻量级静态文件服务器
+- Docker Compose — 容器化部署
+- Nginx Proxy Manager — 反向代理与 HTTPS
+
+---
 
 ## 项目结构
 
@@ -13,62 +48,61 @@
 .
 ├── docker-compose.yml    # Docker Compose 配置
 ├── html/                 # 静态文件目录
-│   ├── index.html        # 首页
-│   └── ...               # 其他页面
+│   ├── index.html        # 首页（提示词库入口）
+│   ├── receipt-physics.html
+│   ├── ai_anwser.html
+│   ├── zen.html
+│   ├── password_create.html
+│   ├── how_to_learn.html
+│   ├── RSVP.html
+│   ├── url_opener.html
+│   ├── spark-sql-converter.html
+│   └── css/
+│       └── styles.css    # 公共样式（工具页使用）
 ├── .gitignore
 └── README.md
 ```
 
-## 快速开始
+---
 
-### 启动服务
+## 本地部署
+
+### 前置条件
+
+- Docker + Docker Compose
+- 外部网络 `npm-network`（由 Nginx Proxy Manager 创建）
+
+### 启动
 
 ```bash
 docker compose up -d
 ```
 
-### 停止服务
+服务监听 `127.0.0.1:8080`，通过 Nginx Proxy Manager 配置域名代理后对外访问。
+
+### 停止
 
 ```bash
 docker compose down
 ```
 
-## 访问页面
+### 添加新工具
 
-服务启动后，通过以下规则访问页面：
+1. 在 `html/` 下创建新的 `.html` 文件
+2. 在 `html/index.html` 中添加对应的工具卡片
+3. 无需重启服务，文件直接生效（目录已挂载为只读 volume）
 
-| 文件路径 | 访问 URL |
-|---------|----------|
-| `html/index.html` | http://localhost:8080/ |
-| `html/about.html` | http://localhost:8080/about.html |
-| `html/docs/guide.html` | http://localhost:8080/docs/guide.html |
-| `html/assets/style.css` | http://localhost:8080/assets/style.css |
-
-### 访问规则
-
-- **根路径 `/`** → 自动加载 `html/index.html`
-- **其他路径** → 直接映射到 `html/` 目录下的对应文件
-- 支持子目录，如 `html/docs/api.html` → `/docs/api.html`
-
-### 示例
-
-```bash
-# 添加新页面
-echo "<h1>About</h1>" > html/about.html
-
-# 访问
-curl http://localhost:8080/about.html
-```
+---
 
 ## 配置说明
 
-可以通过修改 `docker-compose.yml` 中的环境变量来配置服务器：
+通过 `docker-compose.yml` 中的环境变量调整服务行为：
 
 | 环境变量 | 说明 | 默认值 |
 |---------|------|--------|
-| `SERVER_LOG_LEVEL` | 日志级别 | `info` |
-| `SERVER_DIRECTORY_LISTING` | 启用目录列表 | `false` |
+| `SERVER_LOG_LEVEL` | 日志级别（error/warn/info/debug） | `info` |
+| `SERVER_DIRECTORY_LISTING` | 启用目录浏览 | `false` |
 | `SERVER_COMPRESSION` | 启用 gzip 压缩 | `true` |
-| `SERVER_CACHE_CONTROL_HEADERS` | 缓存控制头 | `true` |
+| `SERVER_CACHE_CONTROL_HEADERS` | 启用缓存控制头 | `true` |
 
-更多配置选项请参考: https://static-web-server.net/configuration/environment-variables/
+完整配置项：https://static-web-server.net/configuration/environment-variables/

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics Receipt — 3D Graphics Store</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f0ede8;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    cursor: crosshair;
+  }
+  #canvas { display: block; }
+  #hint {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="hint">🖱 左键拖拽小票 · 感受纸张物理</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─────────────────────────────────────────────
+//  SCENE SETUP
+// ─────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf0ede8);
+scene.fog = new THREE.Fog(0xf0ede8, 18, 30);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 9);
+camera.lookAt(0, 0, 0);
+
+// ─────────────────────────────────────────────
+//  LIGHTING  — warm receipt-counter feel
+// ─────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0xfff8f0, 0.6);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xfff5e8, 1.4);
+keyLight.position.set(3, 6, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 30;
+keyLight.shadow.camera.left = -6;
+keyLight.shadow.camera.right = 6;
+keyLight.shadow.camera.top = 8;
+keyLight.shadow.camera.bottom = -8;
+keyLight.shadow.bias = -0.001;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.4);
+fillLight.position.set(-4, 2, 3);
+scene.add(fillLight);
+
+const rimLight = new THREE.PointLight(0xffe8cc, 0.8, 20);
+rimLight.position.set(0, 5, -3);
+scene.add(rimLight);
+
+// ─────────────────────────────────────────────
+//  TABLE SURFACE
+// ─────────────────────────────────────────────
+const tableGeo = new THREE.PlaneGeometry(30, 30);
+const tableMat = new THREE.MeshStandardMaterial({
+  color: 0xe8e4de,
+  roughness: 0.85,
+  metalness: 0.0,
+});
+const table = new THREE.Mesh(tableGeo, tableMat);
+table.rotation.x = -Math.PI / 2;
+table.position.y = -3.5;
+table.receiveShadow = true;
+scene.add(table);
+
+// ─────────────────────────────────────────────
+//  VERLET CLOTH SIMULATION
+// ─────────────────────────────────────────────
+const COLS = 24;          // horizontal particles
+const ROWS = 44;          // vertical particles (tall receipt)
+const W = 2.8;            // receipt world width
+const H = 7.2;            // receipt world height
+const REST_X = W / (COLS - 1);
+const REST_Y = H / (ROWS - 1);
+
+// Particle arrays (flat)
+const pos     = new Float32Array(COLS * ROWS * 3);   // current pos xyz
+const prevPos = new Float32Array(COLS * ROWS * 3);   // previous pos xyz
+const pinned  = new Uint8Array(COLS * ROWS);          // 1 = fixed
+
+function idx(c, r) { return r * COLS + c; }
+function pidx(c, r) { return (r * COLS + c) * 3; }
+
+// ── Init particles ──
+const startX = -W / 2;
+const startY =  H / 2;
+
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const i = pidx(c, r);
+    pos[i]     = startX + c * REST_X;
+    pos[i + 1] = startY - r * REST_Y;
+    pos[i + 2] = 0;
+    prevPos[i]     = pos[i];
+    prevPos[i + 1] = pos[i + 1];
+    prevPos[i + 2] = pos[i + 2];
+  }
+}
+
+// ── Pin ENTIRE top row ──
+for (let c = 0; c < COLS; c++) {
+  pinned[idx(c, 0)] = 1;
+}
+
+// ── Constraint list ──
+// Each constraint: [i0, i1, restLength, stiffness]
+const constraints = [];
+
+function addConstraint(c0, r0, c1, r1, stiffness) {
+  const i0 = pidx(c0, r0);
+  const i1 = pidx(c1, r1);
+  const dx = pos[i0]     - pos[i1];
+  const dy = pos[i0 + 1] - pos[i1 + 1];
+  const dz = pos[i0 + 2] - pos[i1 + 2];
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  constraints.push({ i0, i1, rest: len, stiff: stiffness });
+}
+
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    // Structural — horizontal
+    if (c + 1 < COLS) addConstraint(c, r, c + 1, r, 1.0);
+    // Structural — vertical
+    if (r + 1 < ROWS) addConstraint(c, r, c, r + 1, 1.0);
+    // Shear
+    if (c + 1 < COLS && r + 1 < ROWS) {
+      addConstraint(c, r, c + 1, r + 1, 0.9);
+      addConstraint(c + 1, r, c, r + 1, 0.9);
+    }
+    // Bending — horizontal skip-1
+    if (c + 2 < COLS) addConstraint(c, r, c + 2, r, 0.55);
+    // Bending — vertical skip-1
+    if (r + 2 < ROWS) addConstraint(c, r, c, r + 2, 0.55);
+  }
+}
+
+// Extra stiff constraints for top 3 rows to keep them very rigid
+for (let r = 0; r < 3; r++) {
+  for (let c = 0; c < COLS - 1; c++) {
+    addConstraint(c, r, c + 1, r, 1.0);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  THREE.JS GEOMETRY — BufferGeometry for cloth
+// ─────────────────────────────────────────────
+const geom = new THREE.BufferGeometry();
+
+// Position buffer
+const positions = new Float32Array(COLS * ROWS * 3);
+const uvs       = new Float32Array(COLS * ROWS * 2);
+const normals   = new Float32Array(COLS * ROWS * 3);
+
+// UV
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const i = idx(c, r);
+    uvs[i * 2]     = c / (COLS - 1);
+    uvs[i * 2 + 1] = 1.0 - r / (ROWS - 1);
+  }
+}
+
+// Index buffer (triangles)
+const indices = [];
+for (let r = 0; r < ROWS - 1; r++) {
+  for (let c = 0; c < COLS - 1; c++) {
+    const a = idx(c,     r);
+    const b = idx(c + 1, r);
+    const d = idx(c,     r + 1);
+    const e = idx(c + 1, r + 1);
+    indices.push(a, d, b);
+    indices.push(b, d, e);
+  }
+}
+
+geom.setIndex(indices);
+geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geom.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
+geom.setAttribute('normal',   new THREE.BufferAttribute(normals, 3));
+
+// ─────────────────────────────────────────────
+//  RECEIPT TEXTURE — Canvas 2D
+// ─────────────────────────────────────────────
+function buildReceiptTexture() {
+  const tw = 512, th = 1536;
+  const cvs = document.createElement('canvas');
+  cvs.width = tw; cvs.height = th;
+  const ctx = cvs.getContext('2d');
+
+  // Paper background — thermal paper off-white
+  const bg = ctx.createLinearGradient(0, 0, tw, th);
+  bg.addColorStop(0,   '#fdfbf7');
+  bg.addColorStop(0.3, '#faf8f3');
+  bg.addColorStop(0.7, '#f7f5f0');
+  bg.addColorStop(1,   '#f4f2ec');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, tw, th);
+
+  // Subtle paper grain noise
+  for (let i = 0; i < 4000; i++) {
+    const x = Math.random() * tw;
+    const y = Math.random() * th;
+    const a = Math.random() * 0.06;
+    ctx.fillStyle = `rgba(80,60,40,${a})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  // Very faint horizontal thermal lines
+  for (let y = 0; y < th; y += 6) {
+    ctx.strokeStyle = 'rgba(180,170,155,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(tw, y);
+    ctx.stroke();
+  }
+
+  const cx = tw / 2;
+  let y = 40;
+
+  function line(thick = 1) {
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = thick;
+    ctx.beginPath();
+    ctx.moveTo(30, y);
+    ctx.lineTo(tw - 30, y);
+    ctx.stroke();
+    y += thick + 8;
+  }
+
+  function dashedLine() {
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(30, y);
+    ctx.lineTo(tw - 30, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    y += 14;
+  }
+
+  function text(str, size, align = 'center', x = cx, bold = false, color = '#1a1a1a') {
+    ctx.font = `${bold ? 'bold ' : ''}${size}px 'Courier New', monospace`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(str, x, y);
+    y += size * 1.35;
+  }
+
+  function row(left, right, size = 22, bold = false) {
+    ctx.font = `${bold ? 'bold ' : ''}${size}px 'Courier New', monospace`;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.textAlign = 'left';
+    ctx.fillText(left, 30, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(right, tw - 30, y);
+    y += size * 1.45;
+  }
+
+  // ── STORE HEADER ──
+  y += 10;
+  text('★ POLYGON VERTEX STORE ★', 28, 'center', cx, true);
+  y += 4;
+  text('3D Graphics Supplies Inc.', 19);
+  text('OpenGL Ave, Shader District', 17, 'center', cx, false, '#555');
+  text('Tel: 0x1F4A9-DEADBEEF', 17, 'center', cx, false, '#555');
+  y += 6;
+  line(2);
+
+  text('RECEIPT #FF0000-CAFE', 18, 'center', cx, false, '#333');
+  text('2024-03-14  π:15:92', 17, 'center', cx, false, '#666');
+  text('Cashier: Vulkan Khronos III', 17, 'center', cx, false, '#666');
+  y += 4;
+  dashedLine();
+
+  // ── ITEMS ──
+  text('ITEMS', 20, 'center', cx, true);
+  y += 4;
+
+  const items = [
+    ['Vertex Buffer Object ×3',  '¥ 29.97'],
+    ['  (32-bit float, VBO)',''],
+    ['Fragment Shader Pack',      '¥ 49.00'],
+    ['  (unlit, PBR, toon)',''],
+    ['MSAA 8× Upgrade Kit',       '¥ 88.00'],
+    ['Normal Map Roller ×2',      '¥ 36.00'],
+    ['Mipmap Pyramid (LOD 0-7)',   '¥ 15.50'],
+    ['Z-Buffer Cleaner 500mL',    '¥ 12.80'],
+    ['  [WARNING: flammable]',''],
+    ['Ambient Occlusion Spray',   '¥ 25.00'],
+    ['Ray Tracing Lens Wipes',    '¥ 8.88'],
+    ['Homogeneous Coords Ruler',  '¥ 19.90'],
+    ['Clip Space Eraser ×4',      '¥ 6.40'],
+    ['MVP Matrix Whiteboard',     '¥ 199.00'],
+    ['Backface Culling Blinder',  '¥ 33.33'],
+    ['Stencil Test Stencil Kit',  '¥ 17.77'],
+    ['Texture Sampler Brush',     '¥ 22.22'],
+    ['Depth Peeling Sieve',       '¥ 44.44'],
+    ['Instanced Draw Stamp ×16',  '¥ 64.00'],
+    ['Rasterization Ruler',       '¥ 9.99'],
+  ];
+
+  for (const [name, price] of items) {
+    if (!price) {
+      ctx.font = `italic 16px 'Courier New', monospace`;
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'left';
+      ctx.fillText(name, 30, y);
+      y += 20;
+    } else {
+      row(name, price, 18);
+    }
+  }
+
+  y += 8;
+  dashedLine();
+
+  // ── TOTALS ──
+  row('Subtotal', '¥ 681.20', 20);
+  row('VAT (Fragment 13%)', '¥ 88.56', 18, false);
+  row('Rendering Surcharge', '¥ 6.66', 18, false);
+  row('GPU Render Discount', '-¥ 50.00', 18, false);
+  y += 4;
+  line(2);
+  row('TOTAL (incl. NaN tax)', '¥ 726.42', 24, true);
+  line(2);
+  y += 6;
+
+  row('Cash Paid', '¥ 1000.00', 19);
+  row('Change', '¥ 273.58', 19);
+  row('Card: **** **** CAFE', '¥ 0.00', 17, false);
+
+  y += 12;
+  dashedLine();
+
+  // ── LOYALTY ──
+  text('VERTEX POINTS EARNED: +9001', 19, 'center', cx, true, '#333');
+  text('Total Points: 0xDEADBEEF', 17);
+  y += 8;
+  dashedLine();
+
+  // ── BARCODE (fake) ──
+  y += 10;
+  const barcodeX = 60;
+  const barcodeW = tw - 120;
+  const barcodeH = 60;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(barcodeX - 4, y - 4, barcodeW + 8, barcodeH + 8);
+
+  let bx = barcodeX;
+  const seed = 0xDEAD;
+  let v = seed;
+  while (bx < barcodeX + barcodeW) {
+    v = (v * 1664525 + 1013904223) & 0xFFFFFFFF;
+    const w = 1 + (v % 3);
+    ctx.fillStyle = (v & 1) ? '#111' : '#fff';
+    ctx.fillRect(bx, y, w, barcodeH);
+    bx += w;
+  }
+  y += barcodeH + 12;
+  text('4E 4F 52 4D 41 4C 2D 4D 41 50', 13, 'center', cx, false, '#555');
+
+  y += 10;
+  dashedLine();
+
+  // ── FOOTER ──
+  text('Thank you for shopping!', 20, 'center', cx, true);
+  text('"All vertices guaranteed', 16, 'center', cx, false, '#666');
+  text('to be coplanar or your', 16, 'center', cx, false, '#666');
+  text('money back (in NDC coords)"', 16, 'center', cx, false, '#666');
+  y += 4;
+  text('── www.polygonstore.gl ──', 16, 'center', cx, false, '#999');
+  y += 20;
+
+  return new THREE.CanvasTexture(cvs);
+}
+
+// ─────────────────────────────────────────────
+//  RECEIPT MESH
+// ─────────────────────────────────────────────
+const receiptTexture = buildReceiptTexture();
+receiptTexture.encoding = THREE.sRGBEncoding;
+receiptTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+const mat = new THREE.MeshStandardMaterial({
+  map: receiptTexture,
+  roughness: 0.88,
+  metalness: 0.0,
+  side: THREE.DoubleSide,
+});
+
+const mesh = new THREE.Mesh(geom, mat);
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+scene.add(mesh);
+
+// Faint drop shadow plane below receipt
+const shadowGeo = new THREE.PlaneGeometry(W + 0.4, H + 0.4);
+const shadowMat = new THREE.MeshBasicMaterial({
+  color: 0x000000,
+  transparent: true,
+  opacity: 0.12,
+  depthWrite: false,
+});
+const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
+shadowPlane.position.set(0.08, 0.05, -0.05);
+scene.add(shadowPlane);
+
+// ─────────────────────────────────────────────
+//  PHYSICS STEP
+// ─────────────────────────────────────────────
+const GRAVITY   = -9.8;
+const DAMPING   = 0.995;
+const TIMESTEP  = 1 / 60;
+const ITERATIONS = 20;
+
+// Stiffness by row — top rows are stiffer (thermal paper behaviour)
+function rowStiffness(r) {
+  if (r < 2) return 1.0;
+  if (r < 5) return 0.98;
+  if (r < 10) return 0.9;
+  return 0.82;
+}
+
+function simulate(dt) {
+  const dt2 = dt * dt;
+
+  // ── Verlet integration ──
+  for (let r = 1; r < ROWS; r++) {  // skip row 0 (pinned)
+    for (let c = 0; c < COLS; c++) {
+      const i = pidx(c, r);
+      if (pinned[idx(c, r)]) continue;
+
+      const px = pos[i],     py = pos[i + 1],     pz = pos[i + 2];
+      const ox = prevPos[i], oy = prevPos[i + 1], oz = prevPos[i + 2];
+
+      const vx = (px - ox) * DAMPING;
+      const vy = (py - oy) * DAMPING;
+      const vz = (pz - oz) * DAMPING;
+
+      prevPos[i]     = px;
+      prevPos[i + 1] = py;
+      prevPos[i + 2] = pz;
+
+      pos[i]     = px + vx;
+      pos[i + 1] = py + vy + GRAVITY * dt2;
+      pos[i + 2] = pz + vz;
+    }
+  }
+
+  // ── Constraint relaxation ──
+  for (let iter = 0; iter < ITERATIONS; iter++) {
+    for (let ci = 0; ci < constraints.length; ci++) {
+      const { i0, i1, rest, stiff } = constraints[ci];
+
+      const r0 = Math.floor(i0 / 3 / COLS);
+      const r1 = Math.floor(i1 / 3 / COLS);
+      const s = Math.min(rowStiffness(r0), rowStiffness(r1)) * stiff;
+
+      const dx = pos[i1]     - pos[i0];
+      const dy = pos[i1 + 1] - pos[i0 + 1];
+      const dz = pos[i1 + 2] - pos[i0 + 2];
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-8;
+      const diff = (len - rest) / len * s * 0.5;
+
+      const p0 = pinned[Math.floor(i0 / 3)];
+      const p1 = pinned[Math.floor(i1 / 3)];
+
+      if (!p0 && !p1) {
+        pos[i0]     += dx * diff;
+        pos[i0 + 1] += dy * diff;
+        pos[i0 + 2] += dz * diff;
+        pos[i1]     -= dx * diff;
+        pos[i1 + 1] -= dy * diff;
+        pos[i1 + 2] -= dz * diff;
+      } else if (!p0) {
+        pos[i0]     += dx * diff * 2;
+        pos[i0 + 1] += dy * diff * 2;
+        pos[i0 + 2] += dz * diff * 2;
+      } else if (!p1) {
+        pos[i1]     -= dx * diff * 2;
+        pos[i1 + 1] -= dy * diff * 2;
+        pos[i1 + 2] -= dz * diff * 2;
+      }
+    }
+
+    // Enforce pins every few iterations
+    if (iter % 4 === 0) enforcePins();
+  }
+
+  enforcePins();
+}
+
+function enforcePins() {
+  for (let c = 0; c < COLS; c++) {
+    const r = 0;
+    const i = pidx(c, r);
+    pos[i]     = startX + c * REST_X;
+    pos[i + 1] = startY;
+    pos[i + 2] = 0;
+    prevPos[i]     = pos[i];
+    prevPos[i + 1] = pos[i + 1];
+    prevPos[i + 2] = pos[i + 2];
+  }
+}
+
+// ─────────────────────────────────────────────
+//  UPDATE MESH GEOMETRY
+// ─────────────────────────────────────────────
+const posAttr = geom.attributes.position;
+const normAttr = geom.attributes.normal;
+const _va = new THREE.Vector3();
+const _vb = new THREE.Vector3();
+const _vc = new THREE.Vector3();
+const _n  = new THREE.Vector3();
+const normAccum = new Float32Array(COLS * ROWS * 3);
+
+function updateMesh() {
+  // Copy positions
+  for (let i = 0; i < COLS * ROWS * 3; i++) {
+    posAttr.array[i] = pos[i];
+  }
+
+  // Recompute normals via face averaging
+  normAccum.fill(0);
+  for (let r = 0; r < ROWS - 1; r++) {
+    for (let c = 0; c < COLS - 1; c++) {
+      const ia = idx(c, r),     pa = pidx(c, r);
+      const ib = idx(c + 1, r), pb = pidx(c + 1, r);
+      const id = idx(c, r + 1), pd = pidx(c, r + 1);
+      const ie = idx(c + 1, r + 1), pe = pidx(c + 1, r + 1);
+
+      _va.set(pos[pa], pos[pa + 1], pos[pa + 2]);
+      _vb.set(pos[pb], pos[pb + 1], pos[pb + 2]);
+      _vc.set(pos[pd], pos[pd + 1], pos[pd + 2]);
+
+      const nx1 = (_vb.y - _va.y) * (_vc.z - _va.z) - (_vb.z - _va.z) * (_vc.y - _va.y);
+      const ny1 = (_vb.z - _va.z) * (_vc.x - _va.x) - (_vb.x - _va.x) * (_vc.z - _va.z);
+      const nz1 = (_vb.x - _va.x) * (_vc.y - _va.y) - (_vb.y - _va.y) * (_vc.x - _va.x);
+
+      for (const ii of [ia, ib, id]) {
+        normAccum[ii * 3]     += nx1;
+        normAccum[ii * 3 + 1] += ny1;
+        normAccum[ii * 3 + 2] += nz1;
+      }
+
+      _va.set(pos[pb], pos[pb + 1], pos[pb + 2]);
+      _vb.set(pos[pd], pos[pd + 1], pos[pd + 2]);
+      _vc.set(pos[pe], pos[pe + 1], pos[pe + 2]);
+
+      const nx2 = (_vb.y - _va.y) * (_vc.z - _va.z) - (_vb.z - _va.z) * (_vc.y - _va.y);
+      const ny2 = (_vb.z - _va.z) * (_vc.x - _va.x) - (_vb.x - _va.x) * (_vc.z - _va.z);
+      const nz2 = (_vb.x - _va.x) * (_vc.y - _va.y) - (_vb.y - _va.y) * (_vc.x - _va.x);
+
+      for (const ii of [ib, id, ie]) {
+        normAccum[ii * 3]     += nx2;
+        normAccum[ii * 3 + 1] += ny2;
+        normAccum[ii * 3 + 2] += nz2;
+      }
+    }
+  }
+
+  // Normalize
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const x = normAccum[i * 3], y = normAccum[i * 3 + 1], z = normAccum[i * 3 + 2];
+    const len = Math.sqrt(x * x + y * y + z * z) + 1e-8;
+    normAttr.array[i * 3]     = x / len;
+    normAttr.array[i * 3 + 1] = y / len;
+    normAttr.array[i * 3 + 2] = z / len;
+  }
+
+  posAttr.needsUpdate = true;
+  normAttr.needsUpdate = true;
+  geom.computeBoundingSphere();
+}
+
+// ─────────────────────────────────────────────
+//  MOUSE INTERACTION
+// ─────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let dragParticle = -1;
+let dragPlane = new THREE.Plane();
+let dragOffset = new THREE.Vector3();
+const _hit = new THREE.Vector3();
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  mouse.x =  (e.clientX / window.innerWidth)  * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const hits = raycaster.intersectObject(mesh);
+  if (hits.length > 0) {
+    const pt = hits[0].point;
+    // Find nearest non-pinned particle
+    let best = -1, bestDist = Infinity;
+    for (let r = 1; r < ROWS; r++) {   // skip pinned row
+      for (let c = 0; c < COLS; c++) {
+        const i = pidx(c, r);
+        const dx = pos[i] - pt.x;
+        const dy = pos[i + 1] - pt.y;
+        const dz = pos[i + 2] - pt.z;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bestDist) { bestDist = d2; best = idx(c, r); }
+      }
+    }
+    dragParticle = best;
+    // Drag on a plane parallel to camera
+    const normal = camera.position.clone().normalize();
+    dragPlane.setFromNormalAndCoplanarPoint(normal, pt);
+    dragOffset.set(
+      pos[best * 3]     - pt.x,
+      pos[best * 3 + 1] - pt.y,
+      pos[best * 3 + 2] - pt.z
+    );
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (dragParticle < 0) return;
+  mouse.x =  (e.clientX / window.innerWidth)  * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  if (raycaster.ray.intersectPlane(dragPlane, _hit)) {
+    const tx = _hit.x + dragOffset.x;
+    const ty = _hit.y + dragOffset.y;
+    const tz = _hit.z + dragOffset.z;
+    const i = dragParticle * 3;
+    // Apply as velocity impulse (Verlet)
+    const strength = 0.3;
+    prevPos[i]     = pos[i]     - (tx - pos[i])     * strength;
+    prevPos[i + 1] = pos[i + 1] - (ty - pos[i + 1]) * strength;
+    prevPos[i + 2] = pos[i + 2] - (tz - pos[i + 2]) * strength;
+    pos[i]     = tx;
+    pos[i + 1] = ty;
+    pos[i + 2] = tz;
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragParticle = -1;
+  canvas.style.cursor = 'crosshair';
+});
+canvas.addEventListener('mouseleave', () => { dragParticle = -1; });
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY, button: 0 }));
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY }));
+}, { passive: false });
+canvas.addEventListener('touchend', () => canvas.dispatchEvent(new MouseEvent('mouseup')));
+
+// ─────────────────────────────────────────────
+//  INITIAL SWAY IMPULSE — make it feel alive
+// ─────────────────────────────────────────────
+for (let r = ROWS - 1; r > ROWS * 0.5; r--) {
+  for (let c = 0; c < COLS; c++) {
+    const i = pidx(c, r);
+    prevPos[i]     -= 0.02 * Math.sin(c * 0.5);
+    prevPos[i + 2] -= 0.01 * Math.cos(r * 0.3);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  RENDER LOOP
+// ─────────────────────────────────────────────
+let last = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now - last) / 1000, 0.033);
+  last = now;
+
+  simulate(dt);
+  updateMesh();
+
+  // Gentle idle sway when not dragging
+  if (dragParticle < 0) {
+    const t = now * 0.0003;
+    for (let c = 0; c < COLS; c++) {
+      const i = pidx(c, ROWS - 1);
+      pos[i + 2] += Math.sin(t + c * 0.4) * 0.0001;
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ─────────────────────────────────────────────
+//  RESIZE
+// ─────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>

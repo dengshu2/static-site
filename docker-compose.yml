@@ -1,6 +1,6 @@
 services:
   web:
-    image: joseluisq/static-web-server:2
+    image: joseluisq/static-web-server:2.41.0
     container_name: static-web-server
     restart: unless-stopped
     ports:
