@@ -26,9 +26,21 @@
 如果你用大模型复现了某个工具，欢迎提交对应的提示词：
 
 1. Fork 本仓库
-2. 编辑 `html/index.html`，找到对应的工具卡片
-3. 将 `<p class="prompt-pending">` 替换为 `<pre class="prompt-pre">` 加入提示词内容
+2. 编辑 `html/data/tools.js`，找到对应的工具对象
+3. 将 `status` 改为 `"done"`，填入 `model` 和 `prompt` 字段
 4. 提交 Pull Request，标题格式：`feat: 补充 [工具名] 提示词`
+
+```js
+// 示例：为某工具补充提示词
+{
+    id: 'zen',
+    title: 'Zen 禅意计时',
+    // ...
+    status: 'done',          // 从 'pending' 改为 'done'
+    model: 'Claude Sonnet',  // 填写使用的模型
+    prompt: `你的提示词...`, // 粘贴提示词内容
+},
+```
 
 或者直接 [提交 Issue](https://github.com/dengshu2/static-site/issues) 附上提示词文本。
 
@@ -48,7 +60,14 @@
 .
 ├── docker-compose.yml    # Docker Compose 配置
 ├── html/                 # 静态文件目录
-│   ├── index.html        # 首页（提示词库入口）
+│   ├── index.html        # 首页骨架（~60 行）
+│   ├── css/
+│   │   ├── index.css     # 首页专属样式
+│   │   └── styles.css    # 公共样式（工具页使用）
+│   ├── js/
+│   │   └── app.js        # 首页渲染与交互逻辑
+│   ├── data/
+│   │   └── tools.js      # ← 工具数据源，新增工具只改这里
 │   ├── receipt-physics.html
 │   ├── ai_anwser.html
 │   ├── zen.html
@@ -56,9 +75,7 @@
 │   ├── how_to_learn.html
 │   ├── RSVP.html
 │   ├── url_opener.html
-│   ├── spark-sql-converter.html
-│   └── css/
-│       └── styles.css    # 公共样式（工具页使用）
+│   └── spark-sql-converter.html
 ├── .gitignore
 └── README.md
 ```
@@ -89,7 +106,7 @@ docker compose down
 ### 添加新工具
 
 1. 在 `html/` 下创建新的 `.html` 文件
-2. 在 `html/index.html` 中添加对应的工具卡片
+2. 在 `html/data/tools.js` 末尾追加一个工具对象（首页自动渲染，无需改 HTML）
 3. 无需重启服务，文件直接生效（目录已挂载为只读 volume）
 
 ---
