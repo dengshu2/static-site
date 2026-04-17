@@ -77,10 +77,17 @@ export const TOOLS = [
         status: 'pending',
     },
     {
-        id: 'spark-sql',
-        title: 'Spark SQL 转换器',
-        desc: 'Spark SQL 转 Scala 代码工具，自动提取表名并生成变量，适配 Zeppelin 环境。',
-        href: 'spark-sql-converter.html',
-        status: 'pending',
+        id: 'lakehouse-arch',
+        title: '湖仓一体架构图',
+        desc: '火山引擎数据湖仓架构图，清晰展示从数据接入、处理到分析的全链路流程。',
+        href: 'bytedance_lakehouse_architecture.html',
+        status: 'done',
+        model: 'Gemini 3 Flash',
+        prompt: `请根据上传的火山引擎数据湖仓架构图图片，使用 HTML 和 CSS 完整复现该架构示意图。
+要求：
+1. 视觉还原：高度还原图片中的配色（针对数据接入、处理、分析、生态各阶段使用不同色系）、布局及组件样式。
+2. 响应式布局：使用 Flexbox 或 Grid 布局，确保在不同屏幕宽度下架构逻辑清晰。
+3. 代码质量：使用语义化 HTML 结构，CSS 变量定义常用圆角、边距及颜色，支持暗色模式切换。
+4. 交互体验：容器应支持横向滚动以适配窄屏。`,
     },
 ];

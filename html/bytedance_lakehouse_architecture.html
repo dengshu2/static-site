@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火山引擎数据湖仓架构图</title>
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        :root {
+            --border-radius-lg: 12px;
+            --border-radius-md: 8px;
+        }
+        body {
+            padding: 2rem 1.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fafaf9;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--ink-3);
+            margin-bottom: 2rem;
+            transition: color 0.15s;
+        }
+        .back-link:hover {
+            color: var(--ink);
+        }
+        .arch-container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .lh-stage{display:flex;align-items:center;gap:10px}
+        .lh-num{width:18px;height:18px;border-radius:50%;background:#7F77DD;color:#fff;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .lh-arr{flex:1;height:0.5px;background:#AFA9EC;position:relative}
+        .lh-arr::after{content:'';position:absolute;right:0;top:-3px;width:6px;height:6px;border-right:1px solid #AFA9EC;border-top:1px solid #AFA9EC;transform:rotate(45deg)}
+        .lh-col{flex:1;display:flex;flex-direction:column;border-radius:var(--border-radius-lg);padding:14px 10px;gap:10px;min-width:0}
+        .lh-col-title{font-size:13px;font-weight:500;padding:0 4px}
+        .lh-group{border-radius:var(--border-radius-md);padding:10px 8px;display:flex;flex-direction:column;gap:6px}
+        .lh-group-title{font-size:12px;text-align:center;font-weight:500}
+        .lh-pill{border-radius:6px;padding:6px 8px;font-size:12px;text-align:center;font-weight:500}
+        .lh-row{display:flex;gap:6px}
+        .lh-row > .lh-pill{flex:1}
+        .lh-box{border-radius:var(--border-radius-md);padding:10px 8px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
+        .lh-box-title{font-size:13px;font-weight:500}
+        .lh-box-sub{font-size:11px;font-weight:400}
+        .lh-meta{font-size:11px;text-align:center;padding:4px 0;border-bottom:1px dashed currentColor;opacity:0.7}
+        .lh-purple{background:#EEEDFE;border:0.5px solid #7F77DD}
+        .lh-purple .lh-col-title,.lh-purple .lh-group-title,.lh-purple .lh-box-title{color:#3C3489}
+        .lh-purple .lh-pill,.lh-purple .lh-box-sub{color:#534AB7}
+        .lh-purple .lh-group{background:rgba(206,203,246,0.35)}
+        .lh-purple .lh-pill{background:#fff;border:0.5px solid #AFA9EC}
+        .lh-blue{background:#E6F1FB;border:0.5px solid #378ADD}
+        .lh-blue .lh-col-title,.lh-blue .lh-box-title{color:#0C447C}
+        .lh-blue .lh-box-sub,.lh-blue .lh-meta{color:#185FA5}
+        .lh-blue .lh-box{background:#fff;border:0.5px solid #85B7EB}
+        .lh-teal{background:#E1F5EE;border:0.5px solid #1D9E75}
+        .lh-teal .lh-col-title,.lh-teal .lh-box-title{color:#085041}
+        .lh-teal .lh-box-sub,.lh-teal .lh-meta,.lh-teal .lh-engine-label{color:#0F6E56}
+        .lh-teal .lh-box{background:#fff;border:0.5px solid #5DCAA5}
+        .lh-teal .lh-engine{background:rgba(159,225,203,0.4);border:0.5px solid #5DCAA5;border-radius:var(--border-radius-md);padding:8px;display:flex;flex-direction:column;gap:6px}
+        .lh-teal .lh-engine-label{font-size:11px;text-align:center;font-weight:500}
+        .lh-teal .lh-cubes{display:flex;justify-content:center;gap:6px;align-items:center}
+        .lh-teal .lh-cube{width:24px;height:24px;background:#5DCAA5;border:0.5px solid #1D9E75;border-radius:3px}
+        .lh-amber{background:#FAEEDA;border:0.5px solid #BA7517}
+        .lh-amber .lh-col-title,.lh-amber .lh-box-title{color:#633806}
+        .lh-amber .lh-box-sub{color:#854F0B}
+        .lh-amber .lh-box{background:#fff;border:0.5px solid #EF9F27;flex:1}
+        .lh-tos{background:#F1EFE8 !important;border:0.5px solid #B4B2A9 !important}
+        .lh-tos .lh-box-title{color:#2C2C2A}
+        .lh-tos .lh-box-sub{color:#5F5E5A}
+        .lh-conn{position:absolute;display:flex;align-items:center}
+        .lh-wrap{position:relative}
+        @media (prefers-color-scheme: dark){
+            :root {
+                --bg: #0a0a0a;
+                --surface: #121212;
+                --border: #262626;
+                --ink: #fafaf9;
+                --ink-3: #a8a29e;
+            }
+            body { background: var(--bg); }
+            .arch-container { background: var(--surface); border-color: var(--border); }
+            .lh-purple{background:#3C3489;border-color:#AFA9EC}
+            .lh-purple .lh-col-title,.lh-purple .lh-group-title,.lh-purple .lh-box-title{color:#EEEDFE}
+            .lh-purple .lh-pill,.lh-purple .lh-box-sub{color:#CECBF6}
+            .lh-purple .lh-group{background:rgba(83,74,183,0.4)}
+            .lh-purple .lh-pill{background:#26215C;border-color:#7F77DD}
+            .lh-blue{background:#0C447C;border-color:#85B7EB}
+            .lh-blue .lh-col-title,.lh-blue .lh-box-title{color:#E6F1FB}
+            .lh-blue .lh-box-sub,.lh-blue .lh-meta{color:#B5D4F4}
+            .lh-blue .lh-box{background:#042C53;border-color:#378ADD}
+            .lh-teal{background:#085041;border-color:#5DCAA5}
+            .lh-teal .lh-col-title,.lh-teal .lh-box-title{color:#E1F5EE}
+            .lh-teal .lh-box-sub,.lh-teal .lh-meta,.lh-teal .lh-engine-label{color:#9FE1CB}
+            .lh-teal .lh-box{background:#04342C;border-color:#1D9E75}
+            .lh-teal .lh-engine{background:rgba(15,110,86,0.4)}
+            .lh-teal .lh-cube{background:#1D9E75;border-color:#5DCAA5}
+            .lh-amber{background:#633806;border-color:#EF9F27}
+            .lh-amber .lh-col-title,.lh-amber .lh-box-title{color:#FAEEDA}
+            .lh-amber .lh-box-sub{color:#FAC775}
+            .lh-amber .lh-box{background:#412402;border-color:#BA7517}
+            .lh-tos{background:#2C2C2A !important;border-color:#888780 !important}
+            .lh-tos .lh-box-title{color:#F1EFE8}
+            .lh-tos .lh-box-sub{color:#D3D1C7}
+        }
+        @media (max-width: 800px) {
+            .arch-body { flex-direction: column; }
+            .lh-stage-row { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M10 13l-5-5 5-5"/>
+        </svg>
+        返回首页
+    </a>
+
+    <div class="arch-container">
+        <h2 class="sr-only">火山引擎数据湖仓架构图</h2>
+        
+        <div class="lh-stage-row" style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+            <div class="lh-stage" style="flex:1"><div class="lh-num">1</div><div style="font-size:13px;font-weight:500">数据接入</div><div class="lh-arr"></div></div>
+            <div class="lh-stage" style="flex:1"><div class="lh-num">2</div><div style="font-size:13px;font-weight:500">数据处理</div><div class="lh-arr"></div></div>
+            <div class="lh-stage" style="flex:1.2"><div class="lh-num">3</div><div style="font-size:13px;font-weight:500">数据挖掘与分析</div><div class="lh-arr"></div></div>
+            <div class="lh-stage" style="flex:0.8"><div class="lh-num">4</div><div style="font-size:13px;font-weight:500">生态集成</div></div>
+        </div>
+
+        <div class="arch-body" style="display:flex;gap:8px;align-items:stretch">
+
+            <div class="lh-col lh-purple" style="flex:1.1">
+                <div class="lh-col-title">数据集成 DataSail&Flink</div>
+                <div class="lh-group" style="flex:1">
+                    <div class="lh-group-title">结构化数据</div>
+                    <div class="lh-pill">表格</div>
+                    <div class="lh-pill">日志服务</div>
+                    <div class="lh-pill">数据库</div>
+                </div>
+                <div class="lh-group" style="flex:1">
+                    <div class="lh-group-title">半结构化数据</div>
+                    <div class="lh-row"><div class="lh-pill">JSON</div><div class="lh-pill">CSV</div></div>
+                    <div class="lh-row"><div class="lh-pill">XML</div><div class="lh-pill">API</div></div>
+                </div>
+                <div class="lh-group" style="flex:1">
+                    <div class="lh-group-title">非结构化数据</div>
+                    <div class="lh-row"><div class="lh-pill">文本</div><div class="lh-pill">图片</div></div>
+                    <div class="lh-row"><div class="lh-pill">音频</div><div class="lh-pill">视频</div></div>
+                </div>
+            </div>
+
+            <div class="lh-col lh-blue" style="flex:1.3">
+                <div class="lh-col-title" style="text-align:center">AI 数据湖服务 LAS</div>
+                <div class="lh-box">
+                    <div class="lh-box-title">算子</div>
+                    <div class="lh-box-sub">内置 | 自定义 | 豆包 | 方舟DS</div>
+                </div>
+                <div class="lh-box">
+                    <div class="lh-box-title">分布式异构计算 CPU&GPU</div>
+                    <div class="lh-box-sub">Spark | Ray | Python</div>
+                </div>
+                <div class="lh-box">
+                    <div class="lh-box-title">数据集管理 | 元数据</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                    <div class="lh-box" style="flex:1">
+                        <div class="lh-box-title">结构化数据</div>
+                        <div class="lh-box-sub">Iceberg</div>
+                    </div>
+                    <div class="lh-box" style="flex:1">
+                        <div class="lh-box-title">多模态数据</div>
+                        <div class="lh-box-sub">Lance</div>
+                    </div>
+                </div>
+                <div style="margin-top:auto">
+                    <div class="lh-meta">Auto Scaling</div>
+                    <div class="lh-meta" style="border-bottom:none;margin-bottom:6px">Storage-Computing Decoupling</div>
+                    <div class="lh-box lh-tos">
+                        <div class="lh-box-title">对象存储 TOS</div>
+                        <div class="lh-box-sub">vePFS</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lh-col lh-teal" style="flex:1.5">
+                <div class="lh-col-title" style="text-align:center">ByteHouse</div>
+                <div style="font-size:11px;text-align:center;color:#0F6E56;line-height:1.5">OLAP | 全文检索 | 向量检索<br>混合检索 | 时序分析 | 时空分析</div>
+                <div class="lh-engine">
+                    <div class="lh-engine-label">Computing Engine</div>
+                    <div class="lh-cubes">
+                        <div class="lh-cube"></div>
+                        <div class="lh-cube"></div>
+                        <div class="lh-cube"></div>
+                        <span style="color:#0F6E56;font-size:14px">…</span>
+                        <div class="lh-cube"></div>
+                    </div>
+                    <div class="lh-engine-label">分布式列存执行</div>
+                </div>
+                <div class="lh-box"><div class="lh-box-title">Optimizer</div></div>
+                <div class="lh-box"><div class="lh-box-title">Immediate Cache</div></div>
+                <div class="lh-box"><div class="lh-box-title">Disk Cache</div></div>
+                <div style="margin-top:auto">
+                    <div class="lh-meta">Auto Scaling</div>
+                    <div class="lh-meta" style="border-bottom:none;margin-bottom:6px">Storage-Computing Decoupling</div>
+                    <div class="lh-box lh-tos">
+                        <div class="lh-box-title">对象存储 TOS</div>
+                        <div class="lh-box-sub">Table | Scalar | Full Text |<br>Vector | Time Series | GIS</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lh-col lh-amber" style="flex:0.9">
+                <div class="lh-box">
+                    <div class="lh-box-title">方舟</div>
+                    <div class="lh-box-sub">数据集互访<br>LAS调用模型</div>
+                </div>
+                <div class="lh-box">
+                    <div class="lh-box-title">MLP</div>
+                    <div class="lh-box-sub">SDK访问数据集<br>调用EMR Ray</div>
+                </div>
+                <div class="lh-box">
+                    <div class="lh-box-title">AI 应用</div>
+                    <div class="lh-box-sub">HiAgent | Coze</div>
+                </div>
+                <div class="lh-box">
+                    <div class="lh-box-title">向量化检索</div>
+                    <div class="lh-box-sub">VikingDB | 云搜索</div>
+                </div>
+                <div class="lh-box"><div class="lh-box-title" style="color:inherit;opacity:0.5">…</div></div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

@@ -18,6 +18,7 @@
 | [RSVP 速读训练](html/RSVP.html) | 快速序列视觉呈现速读工具，消除眼球移动 | 🕐 待补充 |
 | [批量网址打开器](html/url_opener.html) | 粘贴多个链接，一键批量打开 | 🕐 待补充 |
 | [Spark SQL 转换器](html/spark-sql-converter.html) | Spark SQL 转 Scala 代码，适配 Zeppelin | 🕐 待补充 |
+| [湖仓一体架构图](html/bytedance_lakehouse_architecture.html) | 火山引擎数据湖仓架构图，分为接入、处理、分析与生态集成阶段 | ✅ 有（Gemini 3 Flash） |
 
 ---
 
@@ -108,6 +109,7 @@ docker compose down
 1. 在 `html/` 下创建新的 `.html` 文件
 2. 在 `html/data/tools.js` 末尾追加一个工具对象（首页自动渲染，无需改 HTML）
 3. 无需重启服务，文件直接生效（目录已挂载为只读 volume）
+4. **清理缓存**：若修改了 `tools.js` 或 `app.js` 后首页未更新，需在 HTML 引入处增加版本号（如 `?v=...`）或强制刷新浏览器缓存。
 
 ---
 
