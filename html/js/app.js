@@ -1,4 +1,4 @@
-import { TOOLS } from '../data/tools.js?v=20260417_2';
+import { TOOLS } from '../data/tools.js?v=20260425_1';
 
 // ── Render ──────────────────────────────────────────────────────────────────
 

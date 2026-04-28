@@ -77,6 +77,13 @@ export const TOOLS = [
         status: 'pending',
     },
     {
+        id: 'apimart-image',
+        title: 'APImart 生图',
+        desc: '基于 APImart gpt-image-2 接口的网页生图工具，支持文生图与多图参考、自定义比例与并发生成。',
+        href: 'apimart-image.html',
+        status: 'pending',
+    },
+    {
         id: 'lakehouse-arch',
         title: '湖仓一体架构图',
         desc: '火山引擎数据湖仓架构图，清晰展示从数据接入、处理到分析的全链路流程。',
