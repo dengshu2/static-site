@@ -2,7 +2,7 @@
 
 一个静态工具集，每个工具都附带生成它的大模型提示词。复制提示词，粘贴给 Claude、GPT 或 Gemini，即可得到同类工具的完整代码。
 
-🔗 **在线访问**：通过 Nginx Proxy Manager 代理对外提供服务
+🔗 **在线访问**：通过 Caddy 代理对外提供服务
 
 ---
 
@@ -51,7 +51,7 @@
 
 - [static-web-server](https://github.com/static-web-server/static-web-server) `v2.41.0` — 高性能轻量级静态文件服务器
 - Docker Compose — 容器化部署
-- Nginx Proxy Manager — 反向代理与 HTTPS
+- Caddy — 反向代理与 HTTPS
 
 ---
 
@@ -88,7 +88,7 @@
 ### 前置条件
 
 - Docker + Docker Compose
-- 外部网络 `npm-network`（由 Nginx Proxy Manager 创建）
+- 外部网络 `proxy-network`（共享给 Caddy 和被代理服务）
 
 ### 启动
 
@@ -96,7 +96,7 @@
 docker compose up -d
 ```
 
-服务监听 `127.0.0.1:8080`，通过 Nginx Proxy Manager 配置域名代理后对外访问。
+服务监听 `127.0.0.1:8080`，并通过 Caddy 配置域名代理后对外访问。
 
 ### 停止
 

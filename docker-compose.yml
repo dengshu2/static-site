@@ -19,8 +19,8 @@ services:
       # 缓存控制头
       - SERVER_CACHE_CONTROL_HEADERS=true
     networks:
-      - npm-network
+      - proxy-network
 
 networks:
-  npm-network:
+  proxy-network:
     external: true
