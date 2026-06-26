@@ -29,12 +29,17 @@ const Deployer = {
         return (n / 1024 / 1024).toFixed(1) + ' MB';
     },
 
-    async loadSites() {
+    async loadSites(retried) {
         const list = document.getElementById('site-list');
         try {
             const res = await fetch('/api/sites', { headers: this.authHeaders() });
             if (res.status === 401) {
-                list.innerHTML = '<p class="empty">Token 无效或未设置，点击右上角 🔑 设置。</p>';
+                // 浏览器里可能存着旧 Token：自动弹窗重填一次，仍失败才提示。
+                if (!retried) {
+                    this.promptToken();
+                    return this.loadSites(true);
+                }
+                list.innerHTML = '<p class="empty">Token 无效，点击右上角 🔑 重新输入。</p>';
                 return;
             }
             const sites = await res.json();

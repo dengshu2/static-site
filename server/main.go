@@ -45,13 +45,22 @@ func main() {
 	mux.Handle("GET /s/", http.StripPrefix("/s/", http.FileServer(http.Dir(sitesDir))))
 
 	// ── 前端落地页（公开）────────────────────────────────────────────
+	// 管理 UI 必须实时反映最新版本，禁用缓存避免浏览器/CDN 留旧页面。
 	webRoot, _ := fs.Sub(webEmbed, "web")
-	mux.Handle("GET /", http.FileServerFS(webRoot))
+	mux.Handle("GET /", noCache(http.FileServerFS(webRoot)))
 
 	log.Printf("deployer 启动: listen=%s data=%s", cfg.Listen, cfg.DataDir)
 	if err := http.ListenAndServe(cfg.Listen, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// noCache 让管理 UI 资源（HTML/CSS/JS）始终重新校验，避免刷新仍看到旧页面。
+func noCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // auth 是 Bearer Token 中间件，仅保护 /api/*。
