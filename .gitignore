@@ -14,3 +14,9 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Runtime data: uploaded sites + metadata
+data/
+
+# Local secrets
+.env
