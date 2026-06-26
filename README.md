@@ -1,57 +1,39 @@
-# Prompt Library — 用提示词复现工具
+# Drop & Deploy — 上传即部署
 
-一个静态工具集，每个工具都附带生成它的大模型提示词。复制提示词，粘贴给 Claude、GPT 或 Gemini，即可得到同类工具的完整代码。
-
-🔗 **在线访问**：通过 Caddy 代理对外提供服务
-
----
-
-## 工具列表
-
-| 工具 | 描述 | 提示词 |
-|------|------|--------|
-| [小票物理模拟](html/receipt-physics.html) | Three.js + Verlet 积分的交互式热敏纸小票，支持抓取拖拽弯曲 | ✅ 有（Claude Sonnet 4.6） |
-| [AI 洞察档案](html/ai_anwser.html) | 暗黑科技风格的问答档案，支持卡片导出 | 🕐 待补充 |
-| [Zen 禅意计时](html/zen.html) | 极简习惯打卡记录器，随时间变化的主题色 | 🕐 待补充 |
-| [密码生成器](html/password_create.html) | 客户端安全密码生成，自定义长度与字符类型 | 🕐 待补充 |
-| [认知科学学习法](html/how_to_learn.html) | 基于认知科学的高效学习流程图解 | 🕐 待补充 |
-| [RSVP 速读训练](html/RSVP.html) | 快速序列视觉呈现速读工具，消除眼球移动 | 🕐 待补充 |
-| [批量网址打开器](html/url_opener.html) | 粘贴多个链接，一键批量打开 | 🕐 待补充 |
-| [Spark SQL 转换器](html/spark-sql-converter.html) | Spark SQL 转 Scala 代码，适配 Zeppelin | 🕐 待补充 |
-| [湖仓一体架构图](html/bytedance_lakehouse_architecture.html) | 火山引擎数据湖仓架构图，分为接入、处理、分析与生态集成阶段 | ✅ 有（Gemini 3 Flash） |
+把一个 `.html` 文件或 `.zip` 压缩包拖进网页，立即部署成一个可访问的静态站点。
+私有自托管，Go 单二进制 + Docker，零外部依赖。
 
 ---
 
-## 如何贡献提示词
+## 它能做什么
 
-如果你用大模型复现了某个工具，欢迎提交对应的提示词：
+- **拖拽上传**：HTML 单文件，或包含 `index.html` 的 zip 压缩包
+- **即时部署**：每次上传生成一个独立站点 `/s/<name>/`，互不覆盖
+- **站点管理**：网页内查看 / 打开 / 删除已部署站点
+- **私有鉴权**：上传/管理接口由 Bearer Token 保护，公网只能只读访问已部署站点
 
-1. Fork 本仓库
-2. 编辑 `html/data/tools.js`，找到对应的工具对象
-3. 将 `status` 改为 `"done"`，填入 `model` 和 `prompt` 字段
-4. 提交 Pull Request，标题格式：`feat: 补充 [工具名] 提示词`
+---
 
-```js
-// 示例：为某工具补充提示词
-{
-    id: 'zen',
-    title: 'Zen 禅意计时',
-    // ...
-    status: 'done',          // 从 'pending' 改为 'done'
-    model: 'Claude Sonnet',  // 填写使用的模型
-    prompt: `你的提示词...`, // 粘贴提示词内容
-},
+## 架构
+
+```
+                    ┌─────────────────────────────────────┐
+   Caddy  ──反代──► │  deployer (Go 单二进制, scratch 镜像) │
+  (HTTPS)           │                                      │
+                    │  GET  /              落地页(内嵌)     │  公开
+                    │  GET  /s/<name>/*    已部署站点       │  公开
+                    │  POST /api/upload    上传+解压+部署    │  需 Token
+                    │  GET  /api/sites     站点列表          │  需 Token
+                    │  DELETE /api/sites/<name>  删除站点    │  需 Token
+                    └──────────────┬───────────────────────┘
+                                   │ 可写卷
+                            ./data/sites/<name>/...
+                            ./data/meta.json
 ```
 
-或者直接 [提交 Issue](https://github.com/dengshu2/static-site/issues) 附上提示词文本。
-
----
-
-## 技术栈
-
-- [static-web-server](https://github.com/static-web-server/static-web-server) `v2.41.0` — 高性能轻量级静态文件服务器
-- Docker Compose — 容器化部署
-- Caddy — 反向代理与 HTTPS
+- **后端**：纯标准库 Go（Go 1.22 `ServeMux` 路由 + `embed` 内嵌前端 + `archive/zip` 安全解压）
+- **前端**：`server/web/` 下纯静态三件套，编译时打进二进制
+- **数据**：仅 `./data` 一个可写卷，站点文件与元数据都落在这里
 
 ---
 
@@ -59,44 +41,44 @@
 
 ```
 .
-├── docker-compose.yml    # Docker Compose 配置
-├── html/                 # 静态文件目录
-│   ├── index.html        # 首页骨架（~60 行）
-│   ├── css/
-│   │   ├── index.css     # 首页专属样式
-│   │   └── styles.css    # 公共样式（工具页使用）
-│   ├── js/
-│   │   └── app.js        # 首页渲染与交互逻辑
-│   ├── data/
-│   │   └── tools.js      # ← 工具数据源，新增工具只改这里
-│   ├── receipt-physics.html
-│   ├── ai_anwser.html
-│   ├── zen.html
-│   ├── password_create.html
-│   ├── how_to_learn.html
-│   ├── RSVP.html
-│   ├── url_opener.html
-│   └── spark-sql-converter.html
-├── .gitignore
-└── README.md
+├── docker-compose.yml      # 容器编排（接入 Caddy 的 proxy-network）
+├── .env.example            # DEPLOY_TOKEN 模板
+├── server/                 # Go 后端
+│   ├── main.go             # 启动、路由、Token 中间件
+│   ├── config.go           # 环境变量配置
+│   ├── upload.go           # 上传处理：判类型 / 命名 / 原子发布
+│   ├── unzip.go            # 安全解压（防 Zip-Slip / zip bomb）
+│   ├── store.go            # 站点元数据与命名工具
+│   ├── sites.go            # 列表 / 删除接口
+│   ├── Dockerfile          # 多阶段构建 → scratch
+│   └── web/                # 前端（编译时内嵌）
+│       ├── index.html
+│       ├── css/app.css
+│       └── js/{upload,sites}.js
+└── data/                   # 运行时数据（已 gitignore）
 ```
 
 ---
 
-## 本地部署
+## 部署
 
 ### 前置条件
 
 - Docker + Docker Compose
-- 外部网络 `proxy-network`（共享给 Caddy 和被代理服务）
+- 外部网络 `proxy-network`（与 Caddy 共享）
 
 ### 启动
 
 ```bash
+# 1. 设置上传 Token（私有部署的唯一凭证）
+cp .env.example .env
+sed -i "s/changeme/$(openssl rand -hex 16)/" .env
+
+# 2. 构建并启动
 docker compose up -d
 ```
 
-服务监听 `127.0.0.1:8080`，并通过 Caddy 配置域名代理后对外访问。
+服务监听 `127.0.0.1:8080`，通过 Caddy 反代对外。首次打开网页，点右上角 🔑 填入 `.env` 里的 Token。
 
 ### 停止
 
@@ -104,24 +86,46 @@ docker compose up -d
 docker compose down
 ```
 
-### 添加新工具
+---
 
-1. 在 `html/` 下创建新的 `.html` 文件
-2. 在 `html/data/tools.js` 末尾追加一个工具对象（首页自动渲染，无需改 HTML）
-3. 无需重启服务，文件直接生效（目录已挂载为只读 volume）
-4. **清理缓存**：若修改了 `tools.js` 或 `app.js` 后首页未更新，需在 HTML 引入处增加版本号（如 `?v=...`）或强制刷新浏览器缓存。
+## 配置
+
+`docker-compose.yml` 环境变量：
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `DEPLOY_TOKEN` | 上传/管理接口的 Bearer Token（**必填**） | — |
+| `DATA_DIR` | 数据根目录 | `/data` |
+| `MAX_UPLOAD_MB` | 单次上传体积上限（MB） | `50` |
+| `MAX_UNZIP_MB` | zip 解压后总大小上限（MB），防 zip bomb | `200` |
 
 ---
 
-## 配置说明
+## API（命令行上传）
 
-通过 `docker-compose.yml` 中的环境变量调整服务行为：
+```bash
+TOKEN=$(grep DEPLOY_TOKEN .env | cut -d= -f2)
 
-| 环境变量 | 说明 | 默认值 |
-|---------|------|--------|
-| `SERVER_LOG_LEVEL` | 日志级别（error/warn/info/debug） | `info` |
-| `SERVER_DIRECTORY_LISTING` | 启用目录浏览 | `false` |
-| `SERVER_COMPRESSION` | 启用 gzip 压缩 | `true` |
-| `SERVER_CACHE_CONTROL_HEADERS` | 启用缓存控制头 | `true` |
+# 上传单文件
+curl -H "Authorization: Bearer $TOKEN" \
+     -F file=@page.html -F name=my-page \
+     http://127.0.0.1:8080/api/upload
 
-完整配置项：https://static-web-server.net/configuration/environment-variables/
+# 上传 zip（根目录需含 index.html）
+curl -H "Authorization: Bearer $TOKEN" \
+     -F file=@site.zip -F name=my-site -F overwrite=true \
+     http://127.0.0.1:8080/api/upload
+```
+
+成功返回 `201` 与站点信息；同名且未勾选覆盖返回 `409`。
+
+---
+
+## 安全说明
+
+- 上传/管理接口全部需要 Token；公网只能只读访问 `/s/<name>/`
+- zip 解压有三道防线：路径穿越（Zip-Slip）拦截、解压总大小封顶、目录创建限制在站点目录内
+- 上传体积与解压大小均有上限，防止资源耗尽
+- 容器以非 root（`uid=gid=1001`，与宿主用户对齐）运行，监听非特权端口 `8080`，数据卷文件归宿主用户所有
+  - 首次部署或更换宿主用户时，确保 `./data` 属主为该 uid：
+    `docker run --rm -v "$PWD/data:/data" alpine chown -R 1001:1001 /data`

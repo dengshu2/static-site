@@ -1,0 +1,102 @@
+:root {
+    --bg: #f6f8fb;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --border: #dfe3ea;
+    --text: #1f2733;
+    --muted: #6b7585;
+    --accent: #3f6fe0;
+    --accent-2: #2f59c0;
+    --ok: #1f9d57;
+    --danger: #d9405f;
+    --shadow: 0 1px 3px rgba(20, 30, 50, .06), 0 8px 24px rgba(20, 30, 50, .05);
+    --radius: 12px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+}
+
+.page { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
+
+/* Topbar */
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 24px; }
+.brand { font-weight: 600; font-size: 1.05rem; }
+
+.ghost-btn {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; font-size: .85rem; cursor: pointer;
+}
+.ghost-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* Hero */
+.hero { text-align: center; margin: 16px 0 28px; }
+.hero h1 { font-size: 2rem; margin: 0 0 8px; }
+.hero p { color: var(--muted); margin: 0; }
+code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: .9em; }
+
+/* Dropzone */
+.dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    background: var(--panel); padding: 44px 20px; text-align: center;
+    box-shadow: var(--shadow);
+    transition: border-color .15s, background .15s; cursor: pointer;
+}
+.dropzone.dragover { border-color: var(--accent); background: var(--panel-2); }
+.dz-icon { font-size: 2.4rem; }
+.dz-title { font-size: 1.05rem; margin: 10px 0 4px; }
+.dz-hint { color: var(--muted); font-size: .85rem; margin: 0; }
+.link-btn {
+    background: none; border: none; color: var(--accent);
+    cursor: pointer; font: inherit; padding: 0; text-decoration: underline;
+}
+
+/* Options */
+.options { display: flex; gap: 20px; align-items: flex-end; margin: 18px 2px 0; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
+.field span { font-size: .82rem; color: var(--muted); }
+.field input {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 9px 12px; font-size: .9rem;
+}
+.field input:focus { outline: none; border-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--muted); padding-bottom: 9px; }
+
+/* Result */
+.result { margin: 18px 0 0; padding: 14px 16px; border-radius: var(--radius); font-size: .92rem; }
+.result.ok { background: rgba(56, 193, 114, .12); border: 1px solid var(--ok); }
+.result.err { background: rgba(227, 80, 107, .12); border: 1px solid var(--danger); }
+.result.loading { background: var(--panel); border: 1px solid var(--border); color: var(--muted); }
+.result a { color: var(--accent); font-weight: 600; }
+
+/* Sites */
+.sites { margin-top: 40px; }
+.sites-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.sites-head h2 { font-size: 1.1rem; margin: 0; }
+.site-list { display: flex; flex-direction: column; gap: 10px; }
+
+.site-card {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+    box-shadow: var(--shadow);
+}
+.site-meta { min-width: 0; }
+.site-name { font-weight: 600; }
+.site-sub { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.site-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.site-actions a, .site-actions button {
+    font-size: .82rem; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--border); cursor: pointer; text-decoration: none;
+}
+.btn-open { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-del { background: transparent; color: var(--danger); }
+.btn-del:hover { background: rgba(227, 80, 107, .12); }
+.empty { color: var(--muted); font-size: .9rem; text-align: center; padding: 24px; }
