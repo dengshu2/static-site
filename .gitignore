@@ -17,6 +17,7 @@ temp/
 
 # Runtime data: uploaded sites + metadata
 data/
+backups/
 
 # Local secrets
 .env

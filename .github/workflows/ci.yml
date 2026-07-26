@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.5"
+          cache-dependency-path: server/go.mod
+      - name: Check formatting
+        working-directory: server
+        run: test -z "$(gofmt -l .)"
+      - name: Test
+        working-directory: server
+        run: go test -race ./...
+      - name: Vet
+        working-directory: server
+        run: go vet ./...
+      - name: Check browser scripts
+        run: find server/web -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Build container
+        run: docker build -t static-site-ci ./server
