@@ -1,0 +1,20 @@
+[Unit]
+Description=Back up Drop & Deploy data
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=dengshu
+Group=dengshu
+WorkingDirectory=/srv/stacks/static-site
+ExecStart=/srv/stacks/static-site/scripts/backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/stacks/static-site/backups
+ReadOnlyPaths=/srv/stacks/static-site/data

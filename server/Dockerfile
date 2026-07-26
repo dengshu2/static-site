@@ -1,5 +1,5 @@
 # ── 构建阶段 ──────────────────────────────────────────────
-FROM golang:1.22-alpine AS build
+FROM golang:1.26.5-alpine AS build
 WORKDIR /src
 COPY go.mod ./
 # 纯标准库，无需 go.sum / go mod download
@@ -13,4 +13,6 @@ COPY --from=build /deployer /deployer
 # 因此监听非特权端口 8080，数据卷文件归宿主用户所有。
 USER 1001:1001
 EXPOSE 8080
+ENV HEALTHCHECK_URL=http://127.0.0.1:8080/healthz
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD ["/deployer", "healthcheck"]
 ENTRYPOINT ["/deployer"]

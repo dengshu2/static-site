@@ -3,6 +3,7 @@ services:
     build: ./server
     container_name: static-deployer
     restart: unless-stopped
+    stop_grace_period: 20s
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
@@ -15,10 +16,48 @@ services:
       - LISTEN=:8080
       # 数据根目录
       - DATA_DIR=/data
+      # “今天”和最近 14 天访问趋势使用此时区归档
+      - TZ=${TZ:-Asia/Shanghai}
+      # 公开目录、管理端与用户内容使用不同 Origin，隔离上传页面中的脚本
+      - PUBLIC_HOST=site.dengshu.ovh
+      - ADMIN_HOST=deploy.dengshu.ovh
+      - CONTENT_HOST=pages.dengshu.ovh
+      - PUBLIC_BASE_URL=https://site.dengshu.ovh
+      - ADMIN_BASE_URL=https://deploy.dengshu.ovh
+      - CONTENT_BASE_URL=https://pages.dengshu.ovh
       # 单次上传体积上限（MB）
       - MAX_UPLOAD_MB=50
       # zip 解压后总大小上限（MB），防 zip bomb
       - MAX_UNZIP_MB=200
+      # 全局容量、条目数与路径边界
+      - MAX_TOTAL_MB=10240
+      - MAX_ZIP_FILES=5000
+      - MAX_PATH_DEPTH=20
+      - MAX_SITE_NAME_LEN=63
+      - MAX_SITES=1000
+      # 删除和覆盖的旧版本保留 7 天
+      - TRASH_RETENTION_HOURS=168
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "/deployer", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - proxy-network
 
