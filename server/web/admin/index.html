@@ -5,142 +5,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drop &amp; Deploy — 管理工作台</title>
     <meta name="description" content="上传、整理、统计和恢复静态项目。">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚀%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111312'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="base.css">
     <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
     <main class="page">
         <header class="topbar">
-            <a class="brand" href="/">
-                <span class="brand-mark" aria-hidden="true">D</span>
-                <span>
-                    <strong>Drop &amp; Deploy</strong>
-                    <small>管理工作台</small>
-                </span>
-            </a>
-            <div class="top-actions">
-                <a id="public-link" class="ghost-btn" href="/">公开目录 ↗</a>
-                <button id="token-btn" class="ghost-btn" type="button">设置 Token</button>
-            </div>
+            <a class="wordmark" href="/">Drop &amp; Deploy</a>
+            <nav>
+                <a id="public-link" class="link" href="/">公开目录</a>
+                <button id="token-btn" class="link" type="button">设置 Token</button>
+            </nav>
         </header>
 
-        <section class="hero" aria-labelledby="page-title">
-            <div>
-                <p class="eyebrow"><span></span> ADMIN WORKSPACE</p>
-                <h1 id="page-title">项目发布与管理</h1>
-                <p>上传新内容、补充项目资料，并随时查看访问表现和历史版本。</p>
+        <section class="intro">
+            <h1>管理工作台</h1>
+            <p class="lede">上传新内容、补充项目资料，并随时查看访问表现和历史版本。</p>
+            <p class="stats" id="stats">—</p>
+            <p class="note">Token 只停留在当前页面内存，刷新后自动清除。</p>
+        </section>
+
+        <section aria-labelledby="upload-title">
+            <div class="section-head">
+                <h2 id="upload-title">部署新项目</h2>
+                <p>HTML 单文件，或包含 index.html 的 ZIP</p>
             </div>
-            <p class="security-note"><strong>安全提示</strong> Token 只停留在当前页面内存，刷新后自动清除。</p>
-        </section>
 
-        <section class="metrics" aria-label="部署概览">
-            <article>
-                <span>在线项目</span>
-                <strong id="metric-sites">—</strong>
-                <small>当前公开可访问</small>
-            </article>
-            <article>
-                <span>累计访问</span>
-                <strong id="metric-views">—</strong>
-                <small id="metric-today">今天 — 次</small>
-            </article>
-            <article>
-                <span>占用空间</span>
-                <strong id="metric-size">—</strong>
-                <small id="metric-files">共 — 个文件</small>
-            </article>
-            <article>
-                <span>最近更新</span>
-                <strong id="metric-updated">—</strong>
-                <small>过去 7 天</small>
-            </article>
-        </section>
-
-        <div class="workspace">
-            <section class="panel upload-panel" aria-labelledby="upload-title">
-                <div class="section-head">
-                    <div>
-                        <p class="section-kicker">NEW RELEASE</p>
-                        <h2 id="upload-title">部署新项目</h2>
-                        <p>支持 HTML 单文件和包含 index.html 的 ZIP。</p>
-                    </div>
-                </div>
-
+            <div class="upload-form">
                 <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-describedby="drop-hint">
                     <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
-                    <div class="dz-icon" aria-hidden="true">＋</div>
-                    <p class="dz-title">拖放文件，或<span class="link-text">点击选择</span></p>
-                    <p class="dz-hint" id="drop-hint">选择后可以先核对资料，再确认发布。</p>
+                    <p class="dz-title">拖放文件，或<u>点击选择</u></p>
+                    <p class="dz-hint" id="drop-hint">选择后可以先核对资料，再确认发布</p>
                 </div>
 
                 <div id="selected-file" class="selected-file" hidden></div>
-                <div class="options">
-                    <label class="field">
-                        <span>项目标题</span>
-                        <input type="text" id="title-input" maxlength="120" placeholder="显示在公开目录中的标题" autocomplete="off">
-                    </label>
-                    <label class="field">
-                        <span>项目简介</span>
-                        <textarea id="description-input" maxlength="400" rows="3" placeholder="用一两句话说明这个项目"></textarea>
-                    </label>
-                    <label class="field">
-                        <span>站点名（可选，仅支持英文、数字和连字符）</span>
-                        <input type="text" id="name-input" maxlength="63" placeholder="留空则按文件名自动命名" autocomplete="off">
-                    </label>
-                    <label class="check">
-                        <input type="checkbox" id="overwrite-input">
-                        <span>同名时覆盖，旧版本进入版本历史</span>
-                    </label>
-                </div>
+
+                <label class="field">
+                    <span>项目标题</span>
+                    <input type="text" id="title-input" maxlength="120" placeholder="显示在公开目录中的标题" autocomplete="off">
+                </label>
+                <label class="field">
+                    <span>项目简介</span>
+                    <textarea id="description-input" maxlength="400" rows="2" placeholder="用一两句话说明这个项目"></textarea>
+                </label>
+                <label class="field">
+                    <span>站点名（可选，仅支持英文、数字和连字符）</span>
+                    <input type="text" id="name-input" maxlength="63" placeholder="留空则按文件名自动命名" autocomplete="off">
+                </label>
+                <label class="check">
+                    <input type="checkbox" id="overwrite-input">
+                    <span>同名时覆盖，旧版本进入版本历史</span>
+                </label>
+
                 <div class="deploy-actions">
-                    <button id="deploy-btn" class="primary-btn" type="button" disabled>确认部署</button>
-                    <button id="cancel-btn" class="ghost-btn" type="button" hidden>取消上传</button>
+                    <button id="deploy-btn" class="btn" type="button" disabled>确认部署</button>
+                    <button id="cancel-btn" class="link" type="button" hidden>取消上传</button>
                 </div>
                 <div id="result" class="result" role="status" aria-live="polite" hidden></div>
-            </section>
-
-            <section class="panel sites-panel" aria-labelledby="sites-title">
-                <div class="section-head">
-                    <div>
-                        <p class="section-kicker">LIVE PROJECTS</p>
-                        <h2 id="sites-title">已部署项目</h2>
-                        <p id="site-count">正在读取…</p>
-                    </div>
-                    <button id="refresh-btn" class="icon-btn" type="button" aria-label="刷新项目" title="刷新">↻</button>
-                </div>
-                <div class="list-tools">
-                    <label class="compact-search">
-                        <span class="sr-only">搜索已部署项目</span>
-                        <input id="admin-search-input" type="search" placeholder="搜索项目…" autocomplete="off">
-                    </label>
-                    <label class="compact-select">
-                        <span class="sr-only">项目排序方式</span>
-                        <select id="admin-sort-select">
-                            <option value="updated">最近更新</option>
-                            <option value="views">访问最多</option>
-                            <option value="name">名称顺序</option>
-                        </select>
-                    </label>
-                </div>
-                <div id="site-list" class="site-list" aria-live="polite"></div>
-            </section>
-        </div>
-
-        <section class="panel history-panel" aria-labelledby="trash-title">
-            <div class="section-head history-head">
-                <div>
-                    <p class="section-kicker">RECOVERY</p>
-                    <h2 id="trash-title">版本历史与回收站</h2>
-                    <p id="trash-count">覆盖前版本和删除项目默认保留 7 天。</p>
-                </div>
-                <button id="trash-btn" class="ghost-btn" type="button">载入历史</button>
             </div>
-            <div class="history-tools">
-                <label class="compact-search">
-                    <span class="sr-only">搜索历史项目</span>
-                    <input id="history-search-input" type="search" placeholder="搜索历史项目…" autocomplete="off">
+        </section>
+
+        <section aria-labelledby="sites-title">
+            <div class="section-head">
+                <h2 id="sites-title">已部署项目</h2>
+                <button id="refresh-btn" class="link" type="button">刷新</button>
+            </div>
+            <div class="tools">
+                <label class="search">
+                    <span class="sr-only">搜索已部署项目</span>
+                    <input id="admin-search-input" type="search" placeholder="搜索项目" autocomplete="off">
                 </label>
-                <label class="compact-select">
+                <label>
+                    <span class="sr-only">项目排序方式</span>
+                    <select id="admin-sort-select">
+                        <option value="updated">最近更新</option>
+                        <option value="views">访问最多</option>
+                        <option value="name">名称顺序</option>
+                    </select>
+                </label>
+            </div>
+            <p id="site-count" class="count">正在读取…</p>
+            <div id="site-list" class="list" aria-live="polite"></div>
+        </section>
+
+        <section aria-labelledby="trash-title">
+            <div class="section-head">
+                <h2 id="trash-title">版本历史与回收站</h2>
+                <button id="trash-btn" class="link" type="button">载入历史</button>
+            </div>
+            <div class="tools">
+                <label class="search">
+                    <span class="sr-only">搜索历史项目</span>
+                    <input id="history-search-input" type="search" placeholder="搜索历史项目" autocomplete="off">
+                </label>
+                <label>
                     <span class="sr-only">历史类型</span>
                     <select id="history-filter-select">
                         <option value="all">全部记录</option>
@@ -149,13 +109,18 @@
                     </select>
                 </label>
             </div>
-            <div id="trash-list" class="history-grid" aria-live="polite" hidden></div>
+            <p id="trash-count" class="count">覆盖前版本和删除项目默认保留 7 天。</p>
+            <div id="trash-list" class="list" aria-live="polite" hidden></div>
         </section>
+
+        <footer>
+            <span>Drop &amp; Deploy</span>
+            <span>管理端 · 写操作需要 Token</span>
+        </footer>
     </main>
 
     <dialog id="token-dialog" aria-labelledby="token-title">
         <form id="token-form" method="dialog">
-            <p class="dialog-kicker">AUTHORIZATION</p>
             <h2 id="token-title">输入管理 Token</h2>
             <p>只用于本页的上传、修改、删除和恢复操作，不会写入浏览器存储。</p>
             <label class="field">
@@ -163,28 +128,27 @@
                 <input id="token-input" type="password" required minlength="7" autocomplete="off">
             </label>
             <div class="dialog-actions">
-                <button id="token-cancel" class="ghost-btn" type="button">取消</button>
-                <button class="primary-btn" type="submit">使用此 Token</button>
+                <button id="token-cancel" class="link" type="button">取消</button>
+                <button class="btn" type="submit">使用此 Token</button>
             </div>
         </form>
     </dialog>
 
     <dialog id="metadata-dialog" aria-labelledby="metadata-title">
         <form id="metadata-form">
-            <p class="dialog-kicker">PROJECT PROFILE</p>
             <h2 id="metadata-title">编辑项目资料</h2>
-            <p id="metadata-slug"></p>
+            <p id="metadata-slug" class="mono"></p>
             <label class="field">
                 <span>项目标题</span>
                 <input id="metadata-title-input" type="text" required maxlength="120" autocomplete="off">
             </label>
             <label class="field">
                 <span>项目简介</span>
-                <textarea id="metadata-description-input" maxlength="400" rows="4"></textarea>
+                <textarea id="metadata-description-input" maxlength="400" rows="3"></textarea>
             </label>
             <div class="dialog-actions">
-                <button id="metadata-cancel" class="ghost-btn" type="button">取消</button>
-                <button class="primary-btn" type="submit">保存资料</button>
+                <button id="metadata-cancel" class="link" type="button">取消</button>
+                <button class="btn" type="submit">保存资料</button>
             </div>
         </form>
     </dialog>

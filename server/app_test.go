@@ -292,6 +292,31 @@ func TestAdminScriptDoesNotPersistTokenOrUseInnerHTML(t *testing.T) {
 	}
 }
 
+func TestSharedAssetsServedFromBothSurfaces(t *testing.T) {
+	app := newTestApp(t)
+	for _, requestPath := range []string{"/base.css", "/fonts/inter.woff2", "/admin/base.css", "/admin/fonts/inter.woff2"} {
+		req := httptest.NewRequest(http.MethodGet, "https://site.test"+requestPath, nil)
+		req.Host = "site.test"
+		res := httptest.NewRecorder()
+		app.routes().ServeHTTP(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("%s status=%d", requestPath, res.Code)
+		}
+		if res.Body.Len() == 0 {
+			t.Fatalf("%s served an empty body", requestPath)
+		}
+		cache := res.Header().Get("Cache-Control")
+		if strings.HasSuffix(requestPath, ".woff2") {
+			// 字体按文件名长期缓存，否则每次访问都要重新下载并闪一次字体。
+			if !strings.Contains(cache, "immutable") {
+				t.Fatalf("%s cache-control=%q, want immutable", requestPath, cache)
+			}
+		} else if !strings.Contains(cache, "no-store") {
+			t.Fatalf("%s cache-control=%q, want no-store", requestPath, cache)
+		}
+	}
+}
+
 func TestSeparateHostsExposeOnlyTheirOwnSurface(t *testing.T) {
 	app := newTestApp(t)
 	app.cfg.AdminHost = "deploy.test"

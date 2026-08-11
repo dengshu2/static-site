@@ -208,12 +208,22 @@ func embeddedUI(root string) http.Handler {
 	if err != nil {
 		panic(err)
 	}
-	return http.FileServerFS(sub)
+	shared, err := fs.Sub(webEmbed, "web/shared")
+	if err != nil {
+		panic(err)
+	}
+	return http.FileServer(sharedFS{primary: http.FS(sub), fallback: http.FS(shared)})
 }
 
+// noCache 让页面和脚本每次重新验证；字体内容与文件名一一对应，
+// 长期缓存可以避免每次访问重新下载并闪一次字体。更换字体必须改文件名。
 func noCache(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		if strings.HasSuffix(r.URL.Path, ".woff2") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

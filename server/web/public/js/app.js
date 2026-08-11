@@ -1,8 +1,8 @@
 const list = document.getElementById('site-list');
 const count = document.getElementById('site-count');
+const stats = document.getElementById('stats');
 const searchInput = document.getElementById('search-input');
 const sortSelect = document.getElementById('sort-select');
-const clearSearch = document.getElementById('clear-search');
 let allSites = [];
 
 function fmtSize(bytes) {
@@ -18,7 +18,7 @@ function fmtNumber(value) {
 
 function fmtDate(value) {
     if (!value) return '尚未更新';
-    return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(value));
+    return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date(value));
 }
 
 function safeURL(raw) {
@@ -32,17 +32,9 @@ function safeURL(raw) {
     }
 }
 
-function makeButton(label, className, action) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = className;
-    button.textContent = label;
-    button.addEventListener('click', action);
-    return button;
-}
-
-function fact(text) {
+function meta(text, className) {
     const node = document.createElement('span');
+    if (className) node.className = className;
     node.textContent = text;
     return node;
 }
@@ -61,74 +53,80 @@ function renderSites() {
     });
 
     list.replaceChildren();
-    count.textContent = query ? `找到 ${filtered.length} 个，共 ${allSites.length} 个项目` : `${allSites.length} 个公开项目`;
-    clearSearch.hidden = !query;
+    // 未搜索时项目总数已经出现在页首统计里，这里留空。
+    count.textContent = query ? `匹配 ${filtered.length} / ${allSites.length}` : '';
     if (!filtered.length) {
         const empty = document.createElement('p');
         empty.className = 'empty';
-        const title = document.createElement('strong');
-        title.textContent = query ? '没有找到匹配项目' : '还没有部署项目';
-        empty.append(title, document.createTextNode(query ? '换一个关键词试试。' : '完成第一次部署后，项目会出现在这里。'));
+        empty.textContent = query ? '没有匹配的项目，换一个关键词试试。' : '还没有部署项目。完成第一次部署后，项目会出现在这里。';
         list.append(empty);
         return;
     }
-    for (const site of filtered) list.append(siteCard(site));
+    for (const site of filtered) list.append(siteRow(site));
 }
 
-function siteCard(site) {
+function siteRow(site) {
     const url = safeURL(site.url);
-    const card = document.createElement('article');
-    card.className = 'site-card';
+    const row = document.createElement('article');
+    row.className = 'row';
 
-    const top = document.createElement('div');
-    top.className = 'card-top';
-    const slug = document.createElement('p');
-    slug.className = 'site-slug';
-    slug.textContent = `/s/${site.name}/`;
-    const views = document.createElement('span');
-    views.className = 'site-views';
-    views.textContent = `${fmtNumber(site.views)} 次访问`;
-    top.append(slug, views);
+    const main = document.createElement('div');
+    main.className = 'row-main';
 
     const title = document.createElement('h3');
-    title.className = 'site-name';
-    title.textContent = site.title || site.name;
-    const description = document.createElement('p');
-    description.className = 'site-description';
-    description.textContent = site.description || '这个项目还没有添加简介。';
+    title.className = 'row-title';
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = site.title || site.name;
+    title.append(link);
+    main.append(title);
+
+    if (site.description) {
+        const description = document.createElement('p');
+        description.className = 'row-desc';
+        description.textContent = site.description;
+        main.append(description);
+    }
 
     const facts = document.createElement('div');
-    facts.className = 'site-facts';
+    facts.className = 'row-meta';
     facts.append(
-        fact(`${site.files} 个文件`),
-        fact(fmtSize(site.size)),
-        fact(`更新于 ${fmtDate(site.updatedAt || site.createdAt)}`),
+        meta(`/s/${site.name}/`, 'row-slug'),
+        meta(`${site.files} 个文件`),
+        meta(fmtSize(site.size)),
+        meta(fmtDate(site.updatedAt || site.createdAt)),
     );
+    main.append(facts);
 
-    const actions = document.createElement('div');
-    actions.className = 'site-actions';
-    const open = document.createElement('a');
-    open.className = 'primary-btn';
-    open.href = url;
-    open.target = '_blank';
-    open.rel = 'noopener noreferrer';
-    open.textContent = '打开项目 ↗';
-    const copy = makeButton('复制链接', 'soft-btn', async () => {
+    const side = document.createElement('div');
+    side.className = 'row-side';
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'link copy';
+    copy.textContent = '复制链接';
+    copy.addEventListener('click', async () => {
         try {
             await navigator.clipboard.writeText(url);
             copy.textContent = '已复制';
-            setTimeout(() => { copy.textContent = '复制链接'; }, 1500);
         } catch {
             copy.textContent = '复制失败';
         }
+        copy.dataset.done = '1';
+        setTimeout(() => {
+            copy.textContent = '复制链接';
+            delete copy.dataset.done;
+        }, 1500);
     });
-    actions.append(open, copy);
-    card.append(top, title, description, facts, actions);
-    return card;
+    side.append(meta(`${fmtNumber(site.views)} 次访问`), copy);
+
+    row.append(main, side);
+    return row;
 }
 
 async function loadCatalog() {
-    count.textContent = '正在读取项目…';
+    count.textContent = '正在读取…';
     try {
         const [sitesResponse, analyticsResponse] = await Promise.all([
             fetch('/api/sites', { cache: 'no-store' }),
@@ -139,9 +137,11 @@ async function loadCatalog() {
         renderSites();
         if (analyticsResponse.ok) {
             const analytics = await analyticsResponse.json();
-            document.getElementById('stat-sites').textContent = fmtNumber(analytics.totalSites);
-            document.getElementById('stat-views').textContent = fmtNumber(analytics.totalViews);
-            document.getElementById('stat-size').textContent = fmtSize(analytics.totalBytes);
+            stats.textContent = [
+                `${fmtNumber(analytics.totalSites)} 个项目`,
+                `${fmtNumber(analytics.totalViews)} 次访问`,
+                fmtSize(analytics.totalBytes),
+            ].join(' · ');
         }
     } catch {
         list.replaceChildren();
@@ -166,11 +166,6 @@ async function loadConfig() {
 
 searchInput.addEventListener('input', renderSites);
 sortSelect.addEventListener('change', renderSites);
-clearSearch.addEventListener('click', () => {
-    searchInput.value = '';
-    searchInput.focus();
-    renderSites();
-});
 document.getElementById('refresh-btn').addEventListener('click', loadCatalog);
 loadConfig();
 loadCatalog();

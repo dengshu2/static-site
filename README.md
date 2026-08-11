@@ -20,6 +20,21 @@
 
 Token 只保存在管理页面的 JavaScript 内存中，不会写入 Cookie、`localStorage` 或 `sessionStorage`。刷新或关闭页面后自动清除。
 
+## 前端结构
+
+无构建步骤，全部通过 `//go:embed` 打包进二进制：
+
+```text
+server/web/shared/base.css        设计变量、字体、排版和通用组件（两端共用）
+server/web/shared/fonts/*.woff2   自托管的 Inter 与 JetBrains Mono 拉丁子集
+server/web/public/                公开目录页
+server/web/admin/                 管理工作台
+```
+
+`web/shared` 不单独挂路由：公开端和管理端各自的静态文件系统在未命中时回落到它，因此 `/base.css`、`/fonts/inter.woff2` 与 `/admin/base.css`、`/admin/fonts/inter.woff2` 指向同一份内嵌字节。两个 Origin 的 CSP 都是 `default-src 'self'`，字体必须各自提供，不能跨域共享。
+
+自带字体只包含拉丁字母、数字和标点，中文回落到系统字体（PingFang SC / 微软雅黑 / Noto Sans SC）。`.woff2` 按文件名缓存一年（`immutable`），其余页面与脚本仍然每次重新验证，**更换字体文件时必须同时改文件名**。
+
 ## 安全边界
 
 - 公开 API 不返回原始上传文件名，也不包含任何管理操作。

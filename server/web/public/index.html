@@ -12,65 +12,34 @@
     <meta property="og:image:width" content="1536">
     <meta property="og:image:height" content="1024">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚀%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111312'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="base.css">
     <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-    <div class="ambient ambient-one" aria-hidden="true"></div>
-    <div class="ambient ambient-two" aria-hidden="true"></div>
     <main class="page">
         <header class="topbar">
-            <a class="brand" href="/" aria-label="Drop &amp; Deploy 首页">
-                <span class="brand-mark" aria-hidden="true">D</span>
-                <span>
-                    <strong>Drop &amp; Deploy</strong>
-                    <small>静态项目档案馆</small>
-                </span>
-            </a>
-            <a id="admin-link" class="outline-btn" href="/admin/">管理项目</a>
+            <a class="wordmark" href="/">Drop &amp; Deploy</a>
+            <a id="admin-link" class="link" href="/admin/">管理</a>
         </header>
 
-        <section class="hero" aria-labelledby="page-title">
-            <div class="hero-copy">
-                <p class="eyebrow"><span></span> SELF-HOSTED COLLECTION</p>
-                <h1 id="page-title">把每一个想法，<br><em>清楚地展示出来。</em></h1>
-                <p class="hero-note">这里收录已经发布的静态页面与小型项目。搜索、打开，或把链接分享给需要的人。</p>
-            </div>
-            <div class="hero-stats" aria-label="项目概览">
-                <article>
-                    <span>公开项目</span>
-                    <strong id="stat-sites">—</strong>
-                </article>
-                <article>
-                    <span>累计访问</span>
-                    <strong id="stat-views">—</strong>
-                </article>
-                <article>
-                    <span>项目体积</span>
-                    <strong id="stat-size">—</strong>
-                </article>
-            </div>
+        <section class="intro">
+            <h1>静态项目档案馆</h1>
+            <p class="lede">这里收录已经发布的静态页面与小型项目。搜索、打开，或把链接分享给需要的人。</p>
+            <p class="stats" id="stats">—</p>
         </section>
 
-        <section class="catalog" aria-labelledby="catalog-title">
-            <div class="section-head">
-                <div>
-                    <p class="section-kicker">PROJECT INDEX</p>
-                    <h2 id="catalog-title">项目目录</h2>
-                    <p id="site-count">正在读取项目…</p>
-                </div>
-                <button id="refresh-btn" class="icon-btn" type="button" aria-label="刷新项目目录" title="刷新">↻</button>
-            </div>
+        <section aria-labelledby="catalog-title">
+            <h2 id="catalog-title" class="sr-only">项目目录</h2>
 
-            <div class="catalog-tools">
-                <label class="search-field">
-                    <span class="search-icon" aria-hidden="true">⌕</span>
+            <div class="tools">
+                <label class="search">
                     <span class="sr-only">搜索项目</span>
-                    <input id="search-input" type="search" placeholder="搜索标题、简介或项目名" autocomplete="off">
-                    <button id="clear-search" type="button" hidden>清除</button>
+                    <input id="search-input" type="search" placeholder="搜索项目" autocomplete="off">
                 </label>
-                <label class="sort-field">
-                    <span>排序</span>
+                <label>
+                    <span class="sr-only">排序方式</span>
                     <select id="sort-select">
                         <option value="updated">最近更新</option>
                         <option value="views">访问最多</option>
@@ -78,9 +47,11 @@
                         <option value="size">体积最大</option>
                     </select>
                 </label>
+                <button id="refresh-btn" class="link" type="button">刷新</button>
             </div>
 
-            <div id="site-list" class="site-grid" aria-live="polite"></div>
+            <p id="site-count" class="count">正在读取…</p>
+            <div id="site-list" class="list" aria-live="polite"></div>
         </section>
 
         <footer>

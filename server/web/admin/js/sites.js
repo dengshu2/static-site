@@ -19,8 +19,8 @@ const Deployer = {
     fmtDate(value, includeTime = false) {
         if (!value) return '暂无记录';
         const options = includeTime
-            ? { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-            : { year: 'numeric', month: 'short', day: 'numeric' };
+            ? { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+            : { year: 'numeric', month: 'numeric', day: 'numeric' };
         return new Intl.DateTimeFormat('zh-CN', options).format(new Date(value));
     },
 
@@ -87,12 +87,12 @@ const Deployer = {
             const response = await fetch('/api/analytics', { cache: 'no-store' });
             if (!response.ok) return;
             const analytics = await response.json();
-            document.getElementById('metric-sites').textContent = this.fmtNumber(analytics.totalSites);
-            document.getElementById('metric-views').textContent = this.fmtNumber(analytics.totalViews);
-            document.getElementById('metric-today').textContent = `今天 ${this.fmtNumber(analytics.viewsToday)} 次`;
-            document.getElementById('metric-size').textContent = this.fmtSize(analytics.totalBytes);
-            document.getElementById('metric-files').textContent = `共 ${this.fmtNumber(analytics.totalFiles)} 个文件`;
-            document.getElementById('metric-updated').textContent = this.fmtNumber(analytics.updatedThisWeek);
+            document.getElementById('stats').textContent = [
+                `${this.fmtNumber(analytics.totalSites)} 个项目`,
+                `${this.fmtNumber(analytics.totalViews)} 次访问（今天 ${this.fmtNumber(analytics.viewsToday)}）`,
+                `${this.fmtSize(analytics.totalBytes)} / ${this.fmtNumber(analytics.totalFiles)} 个文件`,
+                `过去 7 天更新 ${this.fmtNumber(analytics.updatedThisWeek)} 个`,
+            ].join(' · ');
         } catch {
             // 概览失败不影响主要管理流程。
         }
@@ -128,68 +128,71 @@ const Deployer = {
 
         const list = document.getElementById('site-list');
         list.replaceChildren();
-        document.getElementById('site-count').textContent = query
-            ? `找到 ${sites.length} 个，共 ${this.sites.length} 个项目`
-            : `${this.sites.length} 个在线项目`;
+        // 未搜索时项目总数已经出现在页首统计里，这里留空。
+        document.getElementById('site-count').textContent = query ? `匹配 ${sites.length} / ${this.sites.length}` : '';
         if (!sites.length) {
             list.append(this.message(query ? '没有找到匹配项目。' : '还没有部署任何项目。', 'empty'));
             return;
         }
-        for (const site of sites) list.append(this.siteCard(site));
+        for (const site of sites) list.append(this.siteRow(site));
     },
 
-    siteCard(site) {
+    siteRow(site) {
         const url = this.safeURL(site.url);
-        const card = document.createElement('article');
-        card.className = 'site-card';
+        const row = document.createElement('article');
+        row.className = 'row';
 
         const main = document.createElement('div');
-        main.className = 'site-card-main';
-        const meta = document.createElement('div');
-        meta.className = 'site-meta';
+        main.className = 'row-main';
         const title = document.createElement('h3');
-        title.className = 'site-name';
+        title.className = 'row-title';
         title.textContent = site.title || site.name;
-        const slug = document.createElement('p');
-        slug.className = 'site-slug';
-        slug.textContent = `/s/${site.name}/`;
-        const description = document.createElement('p');
-        description.className = 'site-description';
-        description.textContent = site.description || '尚未添加项目简介。';
-        const sub = document.createElement('p');
-        sub.className = 'site-sub';
-        sub.textContent = `${site.files} 个文件 · ${this.fmtSize(site.size)} · 更新于 ${this.fmtDate(site.updatedAt || site.createdAt)}`;
-        meta.append(title, slug, description, sub);
-        const views = document.createElement('span');
-        views.className = 'view-chip';
-        views.textContent = `${this.fmtNumber(site.views)} 次访问`;
-        main.append(meta, views);
+        main.append(title);
+        if (site.description) {
+            const description = document.createElement('p');
+            description.className = 'row-desc';
+            description.textContent = site.description;
+            main.append(description);
+        }
+        main.append(this.metaLine([
+            [`/s/${site.name}/`, 'row-slug'],
+            [`${site.files} 个文件`],
+            [this.fmtSize(site.size)],
+            [this.fmtDate(site.updatedAt || site.createdAt)],
+        ]));
 
-        const actions = document.createElement('div');
-        actions.className = 'site-actions';
+        const side = document.createElement('div');
+        side.className = 'row-side';
+        const views = document.createElement('span');
+        views.textContent = `${this.fmtNumber(site.views)} 次访问`;
+
+        const actions = document.createElement('span');
+        actions.className = 'actions';
         const open = document.createElement('a');
-        open.className = 'primary-btn';
+        open.className = 'link';
         open.href = url;
         open.target = '_blank';
         open.rel = 'noopener noreferrer';
-        open.textContent = '打开 ↗';
-        const copy = this.button('复制链接', 'soft-btn', async () => {
+        open.textContent = '打开';
+        const copy = this.button('复制', 'link', async () => {
             try {
                 await navigator.clipboard.writeText(url);
                 copy.textContent = '已复制';
-                setTimeout(() => { copy.textContent = '复制链接'; }, 1500);
             } catch {
                 copy.textContent = '复制失败';
             }
+            setTimeout(() => { copy.textContent = '复制'; }, 1500);
         });
         actions.append(
             open,
             copy,
-            this.button('编辑资料', 'ghost-btn', () => this.openMetadata(site)),
-            this.button('删除', 'danger-btn', () => this.deleteSite(site.name)),
+            this.button('编辑', 'link', () => this.openMetadata(site)),
+            this.button('删除', 'link danger', () => this.deleteSite(site.name)),
         );
-        card.append(main, actions);
-        return card;
+        side.append(views, actions);
+
+        row.append(main, side);
+        return row;
     },
 
     openMetadata(site) {
@@ -259,34 +262,45 @@ const Deployer = {
             return (!query || searchable.includes(query)) && (filter === 'all' || item.reason === filter);
         });
         list.replaceChildren();
-        document.getElementById('trash-count').textContent = `显示 ${items.length} 条，共 ${this.trashItems.length} 条历史记录；默认保留 7 天。`;
+        document.getElementById('trash-count').textContent = query || filter !== 'all'
+            ? `匹配 ${items.length} / ${this.trashItems.length}`
+            : `${this.trashItems.length} 条历史记录，默认保留 7 天`;
         if (!items.length) {
             list.append(this.message(query || filter !== 'all' ? '没有匹配的历史记录。' : '版本历史为空。', 'empty'));
             return;
         }
-        for (const item of items) list.append(this.trashCard(item));
+        for (const item of items) list.append(this.trashRow(item));
     },
 
-    trashCard(item) {
-        const card = document.createElement('article');
-        card.className = 'history-card';
-        const badge = document.createElement('span');
-        badge.className = `history-badge${item.reason === 'deleted' ? ' deleted' : ''}`;
-        badge.textContent = item.reason === 'overwritten' ? '覆盖前版本' : '已删除项目';
+    trashRow(item) {
+        const row = document.createElement('article');
+        row.className = 'row';
+
+        const main = document.createElement('div');
+        main.className = 'row-main';
         const title = document.createElement('h3');
+        title.className = 'row-title';
         title.textContent = item.site.title || item.site.name;
-        const slug = document.createElement('p');
-        slug.textContent = `/s/${item.site.name}/`;
-        const details = document.createElement('p');
-        details.textContent = `${item.site.files} 个文件 · ${this.fmtSize(item.site.size)} · 进入历史于 ${this.fmtDate(item.deletedAt, true)}`;
-        const actions = document.createElement('div');
-        actions.className = 'site-actions';
+        main.append(title, this.metaLine([
+            [item.reason === 'overwritten' ? '覆盖前版本' : '已删除项目', 'row-tag'],
+            [`/s/${item.site.name}/`, 'row-slug'],
+            [`${item.site.files} 个文件`],
+            [this.fmtSize(item.site.size)],
+            [`${this.fmtDate(item.deletedAt, true)} 移入`],
+        ]));
+
+        const side = document.createElement('div');
+        side.className = 'row-side';
+        const actions = document.createElement('span');
+        actions.className = 'actions';
         actions.append(
-            this.button('恢复此版本', 'primary-btn', () => this.restoreTrash(item.id)),
-            this.button('永久删除', 'danger-btn', () => this.purgeTrash(item.id, item.site.name)),
+            this.button('恢复', 'link', () => this.restoreTrash(item.id)),
+            this.button('永久删除', 'link danger', () => this.purgeTrash(item.id, item.site.name)),
         );
-        card.append(badge, title, slug, details, actions);
-        return card;
+        side.append(actions);
+
+        row.append(main, side);
+        return row;
     },
 
     async restoreTrash(id) {
@@ -311,6 +325,18 @@ const Deployer = {
         } catch (error) {
             alert(`永久删除失败：${error.message}`);
         }
+    },
+
+    metaLine(entries) {
+        const line = document.createElement('div');
+        line.className = 'row-meta';
+        for (const [text, className] of entries) {
+            const node = document.createElement('span');
+            if (className) node.className = className;
+            node.textContent = text;
+            line.append(node);
+        }
+        return line;
     },
 
     button(label, className, action) {
