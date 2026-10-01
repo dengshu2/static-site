@@ -86,8 +86,9 @@ services:
     security_opt:
       - no-new-privileges:true
     pids_limit: 256
-    mem_limit: 768m
-    cpus: 1.0
+    mem_limit: 1g
+    # 3D pages are drawn in software (no GPU); two cores keep that to tens of seconds.
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "/usr/local/bin/shot", "health"]
       interval: 30s

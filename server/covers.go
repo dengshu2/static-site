@@ -42,7 +42,7 @@ func NewCovers(dataDir, shotURL string) (*Covers, error) {
 	return &Covers{
 		dir:      dir,
 		shotURL:  shotURL,
-		client:   &http.Client{Timeout: 45 * time.Second},
+		client:   &http.Client{Timeout: 2 * time.Minute}, // heavy 3D pages take a while
 		pending:  map[string]bool{},
 		attempts: map[string]int{},
 		queue:    make(chan string, 1024),
@@ -142,7 +142,7 @@ func (c *Covers) Run(ctx context.Context, exists func(string) bool) {
 }
 
 func (c *Covers) take(ctx context.Context, name string) error {
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	endpoint := c.shotURL + "/shot?path=" + url.QueryEscape("/s/"+name+"/")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

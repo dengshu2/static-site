@@ -34,8 +34,19 @@ import (
 const (
 	viewW, viewH   = 1280, 800
 	coverW, coverH = 800, 500
-	settle         = 1500 * time.Millisecond // after load, for fonts, scripts and animations
+	settle         = 1500 * time.Millisecond // after load, for scripts and entrance animations
+	shotTimeout    = 90 * time.Second
 )
+
+// freeze waits for fonts, then stops the page drawing new frames: no more
+// requestAnimationFrame callbacks, CSS animations paused. A WebGL scene drawn
+// in software can take seconds per frame and keep the page too busy to be
+// captured; frozen, the last frame stays on screen and the capture is quick.
+const freeze = `document.fonts.ready.then(() => {
+  window.requestAnimationFrame = () => 0;
+  for (const a of document.getAnimations()) a.pause();
+  return true;
+})`
 
 var projectPath = regexp.MustCompile(`^/s/[a-z0-9]+(?:-[a-z0-9]+)*/$`)
 
@@ -60,7 +71,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /shot", s.handle)
-	srv := &http.Server{Addr: env("LISTEN", ":9000"), Handler: mux, ReadHeaderTimeout: 5 * time.Second, WriteTimeout: time.Minute}
+	srv := &http.Server{Addr: env("LISTEN", ":9000"), Handler: mux, ReadHeaderTimeout: 5 * time.Second, WriteTimeout: shotTimeout + 10*time.Second}
 	log.Printf("shot listening on %s, target %s", srv.Addr, s.target)
 	log.Fatal(srv.ListenAndServe())
 }
@@ -125,7 +136,7 @@ func (s *shooter) shoot(ctx context.Context, url string) ([]byte, error) {
 	}
 	tab, closeTab := chromedp.NewContext(browser)
 	defer closeTab()
-	tab, cancel := context.WithTimeout(tab, 30*time.Second)
+	tab, cancel := context.WithTimeout(tab, shotTimeout)
 	defer cancel()
 	go func() { // a caller giving up closes the tab too
 		select {
@@ -136,8 +147,8 @@ func (s *shooter) shoot(ctx context.Context, url string) ([]byte, error) {
 	}()
 
 	var (
-		shot       []byte
-		fontsReady bool
+		shot   []byte
+		frozen bool
 	)
 	err = chromedp.Run(tab,
 		// Always the current version: a restored older version has older file
@@ -146,11 +157,10 @@ func (s *shooter) shoot(ctx context.Context, url string) ([]byte, error) {
 		emulation.SetDeviceMetricsOverride(viewW, viewH, 1, false),
 		emulation.SetEmulatedMedia().WithFeatures([]*emulation.MediaFeature{{Name: "prefers-color-scheme", Value: "light"}}),
 		chromedp.Navigate(url),
-		// Wait for fonts, then a moment for scripts and entrance animations.
-		chromedp.Evaluate(`document.fonts.ready.then(() => true)`, &fontsReady, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
+		chromedp.Sleep(settle),
+		chromedp.Evaluate(freeze, &frozen, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
 			return p.WithAwaitPromise(true)
 		}),
-		chromedp.Sleep(settle),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var err error
 			shot, err = page.CaptureScreenshot().WithFormat(page.CaptureScreenshotFormatPng).Do(ctx)
