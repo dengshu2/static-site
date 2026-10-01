@@ -1,0 +1,29 @@
+/* Shared by the catalog and the admin page, on top of Quiet UI (quiet.css). */
+
+/* Figtree is served from here (Latin subset): the pages allow no outside
+   sources. Chinese falls back to the system font. The file is cached for a
+   year by name, so a new font needs a new filename. */
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url(fonts/figtree-v1.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root { --q-mark: #2a5bd7; }
+
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.brand { display: inline-flex; align-items: center; gap: 6px; }
+.q-actions .q-btn { gap: 6px; }
+
+/* A project's cover, or a quiet placeholder until there is one. */
+.cover { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 12px; background: var(--q-bubble); }
+.cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cover .initial {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 40px; font-weight: 650; color: var(--q-faint); letter-spacing: -0.02em;
+}
+
+.foot { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0 32px; font-size: 12.5px; color: var(--q-sub); }

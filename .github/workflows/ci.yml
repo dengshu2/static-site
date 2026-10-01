@@ -16,7 +16,9 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.5"
-          cache-dependency-path: server/go.mod
+          cache-dependency-path: |
+            server/go.mod
+            shot/go.sum
       - name: Check formatting
         working-directory: server
         run: test -z "$(gofmt -l .)"
@@ -28,5 +30,13 @@ jobs:
         run: go vet ./...
       - name: Check browser scripts
         run: find server/web -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Build container
-        run: docker build -t static-site-ci ./server
+      - name: Screenshot service
+        working-directory: shot
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./...
+      - name: Build containers
+        run: |
+          docker build -t static-site-ci ./server
+          docker build -t static-shot-ci ./shot

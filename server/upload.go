@@ -106,6 +106,7 @@ func (a *App) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.covers.Request(name)
 	log.Printf("event=uploaded site=%q files=%d bytes=%d overwrite=%t ip=%q", name, files, size, input.overwrite, clientIP(r))
 	published, _ := a.store.Get(name)
 	writeJSON(w, http.StatusCreated, a.siteResponse(published))

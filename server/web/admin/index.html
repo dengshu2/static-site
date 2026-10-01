@@ -2,158 +2,150 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drop &amp; Deploy — 管理工作台</title>
-    <meta name="description" content="上传、整理、统计和恢复静态项目。">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111312'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
-    <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="css/app.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <title>管理 · Drop &amp; Deploy</title>
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="preload" href="fonts/figtree-v1.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="quiet.css">
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="app.css">
+    <script type="module" src="js/main.js"></script>
 </head>
 <body>
-    <main class="page">
-        <header class="topbar">
-            <a class="wordmark" href="/">Drop &amp; Deploy</a>
-            <nav>
-                <a id="public-link" class="link" href="/">公开目录</a>
-                <button id="token-btn" class="link" type="button">设置 Token</button>
-            </nav>
-        </header>
+    <svg class="sprite" aria-hidden="true">
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+        <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+        <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+        <symbol id="i-restore" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    </svg>
 
-        <section class="intro">
-            <h1>管理工作台</h1>
-            <p class="lede">上传新内容、补充项目资料，并随时查看访问表现和历史版本。</p>
-            <p class="stats" id="stats">—</p>
-            <p class="note">Token 只停留在当前页面内存，刷新后自动清除。</p>
-        </section>
-
-        <section aria-labelledby="upload-title">
-            <div class="section-head">
-                <h2 id="upload-title">部署新项目</h2>
-                <p>HTML 单文件，或包含 index.html 的 ZIP</p>
+    <div class="q-app">
+        <!-- Sign in: the token once, then 30 days on this device. -->
+        <main class="auth" id="view-login" hidden>
+            <div class="auth-brand">
+                <span class="q-mark q-mark--lg" aria-hidden="true">D</span>
+                <h1 class="auth-title">Drop &amp; Deploy</h1>
+                <p class="auth-tagline">发布和管理静态项目</p>
             </div>
-
-            <div class="upload-form">
-                <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-describedby="drop-hint">
-                    <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
-                    <p class="dz-title">拖放文件，或<u>点击选择</u></p>
-                    <p class="dz-hint" id="drop-hint">选择后可以先核对资料，再确认发布</p>
-                </div>
-
-                <div id="selected-file" class="selected-file" hidden></div>
-
-                <label class="field">
-                    <span>项目标题</span>
-                    <input type="text" id="title-input" maxlength="120" placeholder="显示在公开目录中的标题" autocomplete="off">
-                </label>
-                <label class="field">
-                    <span>项目简介</span>
-                    <textarea id="description-input" maxlength="400" rows="2" placeholder="用一两句话说明这个项目"></textarea>
-                </label>
-                <label class="field">
-                    <span>站点名（可选，仅支持英文、数字和连字符）</span>
-                    <input type="text" id="name-input" maxlength="63" placeholder="留空则按文件名自动命名" autocomplete="off">
-                </label>
-                <label class="check">
-                    <input type="checkbox" id="overwrite-input">
-                    <span>同名时覆盖，旧版本进入版本历史</span>
-                </label>
-
-                <div class="deploy-actions">
-                    <button id="deploy-btn" class="btn" type="button" disabled>确认部署</button>
-                    <button id="cancel-btn" class="link" type="button" hidden>取消上传</button>
-                </div>
-                <div id="result" class="result" role="status" aria-live="polite" hidden></div>
-            </div>
-        </section>
-
-        <section aria-labelledby="sites-title">
-            <div class="section-head">
-                <h2 id="sites-title">已部署项目</h2>
-                <button id="refresh-btn" class="link" type="button">刷新</button>
-            </div>
-            <div class="tools">
-                <label class="search">
-                    <span class="sr-only">搜索已部署项目</span>
-                    <input id="admin-search-input" type="search" placeholder="搜索项目" autocomplete="off">
-                </label>
+            <form class="auth-form" id="login-form" novalidate>
                 <label>
-                    <span class="sr-only">项目排序方式</span>
-                    <select id="admin-sort-select">
-                        <option value="updated">最近更新</option>
-                        <option value="views">访问最多</option>
-                        <option value="name">名称顺序</option>
-                    </select>
+                    <span class="q-field-label">部署 Token</span>
+                    <input class="q-field" type="password" id="login-token" autocomplete="current-password" required>
                 </label>
-            </div>
-            <p id="site-count" class="count">正在读取…</p>
-            <div id="site-list" class="list" aria-live="polite"></div>
+                <p class="q-notice q-notice--danger" id="login-error" role="alert" hidden></p>
+                <button class="q-btn q-btn--primary q-btn--wide" id="login-submit" type="submit">登录</button>
+                <p class="auth-note">登录后这台设备 30 天内不用再输入。</p>
+            </form>
+        </main>
+
+        <section id="view-home" aria-label="管理" hidden>
+            <header class="q-top">
+                <a class="q-round" href="#history" aria-label="历史版本与回收站"><svg class="q-i"><use href="#i-history"/></svg></a>
+                <div class="q-status">
+                    <b class="brand"><span class="q-mark" aria-hidden="true">D</span>Drop &amp; Deploy</b>
+                    <span>管理</span>
+                </div>
+                <a class="q-pill" id="catalog-link" href="/" target="_blank" rel="noopener">公开目录</a>
+            </header>
+            <main class="q-page">
+                <div class="q-tiles" id="overview"></div>
+
+                <section class="q-sec" aria-labelledby="deploy-title">
+                    <h3 id="deploy-title">发布新项目</h3>
+                    <form class="deploy" id="deploy-form" novalidate>
+                        <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
+                        <button class="drop" id="drop" type="button">
+                            <span class="drop-icon"><svg class="q-i"><use href="#i-upload"/></svg></span>
+                            <b id="drop-title">拖入文件，或点击选择</b>
+                            <span id="drop-sub">HTML 单文件，或包含 index.html 的 ZIP</span>
+                        </button>
+                        <div class="deploy-fields" id="deploy-fields" hidden>
+                            <label>
+                                <span class="q-field-label">标题</span>
+                                <input class="q-field" id="title-input" maxlength="120" placeholder="显示在公开目录里">
+                            </label>
+                            <label>
+                                <span class="q-field-label">简介</span>
+                                <textarea class="q-field" id="desc-input" rows="2" maxlength="400" placeholder="一两句话说明这个项目（可选）"></textarea>
+                            </label>
+                            <label>
+                                <span class="q-field-label">站点名</span>
+                                <input class="q-field" id="name-input" maxlength="63" placeholder="可选；留空按文件名生成" autocomplete="off" spellcheck="false">
+                                <span class="field-hint" id="name-hint"></span>
+                            </label>
+                            <div class="q-notice q-notice--warn" id="overwrite-note" hidden>
+                                <span id="overwrite-text"></span>
+                                <label class="check"><input type="checkbox" id="overwrite-input"> 替换它</label>
+                            </div>
+                            <div class="deploy-foot">
+                                <span class="q-count" id="deploy-status"></span>
+                                <button class="q-btn q-btn--quiet q-btn--sm" id="deploy-reset" type="button">取消</button>
+                                <button class="q-btn q-btn--primary" id="deploy-submit" type="submit" disabled>发布</button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="q-sec" aria-labelledby="sites-title">
+                    <div class="sec-head">
+                        <h3 id="sites-title">项目</h3>
+                        <span class="q-meta" id="sites-count"></span>
+                    </div>
+                    <input class="q-search" id="sites-search" type="search" placeholder="搜索标题、简介或站点名" aria-label="搜索项目" autocomplete="off">
+                    <div class="q-seg" id="sites-sort" role="group" aria-label="排序">
+                        <button type="button" data-sort="updated" aria-pressed="true">最近更新</button>
+                        <button type="button" data-sort="views" aria-pressed="false">访问</button>
+                        <button type="button" data-sort="name" aria-pressed="false">名称</button>
+                        <button type="button" data-sort="size" aria-pressed="false">体积</button>
+                    </div>
+                    <ul class="q-rows" id="sites"></ul>
+                </section>
+
+                <div class="q-actions logout"><button class="q-btn q-btn--quiet" id="logout" type="button">退出登录</button></div>
+            </main>
         </section>
 
-        <section aria-labelledby="trash-title">
-            <div class="section-head">
-                <h2 id="trash-title">版本历史与回收站</h2>
-                <button id="trash-btn" class="link" type="button">载入历史</button>
-            </div>
-            <div class="tools">
-                <label class="search">
-                    <span class="sr-only">搜索历史项目</span>
-                    <input id="history-search-input" type="search" placeholder="搜索历史项目" autocomplete="off">
-                </label>
-                <label>
-                    <span class="sr-only">历史类型</span>
-                    <select id="history-filter-select">
-                        <option value="all">全部记录</option>
-                        <option value="overwritten">覆盖前版本</option>
-                        <option value="deleted">已删除项目</option>
-                    </select>
-                </label>
-            </div>
-            <p id="trash-count" class="count">覆盖前版本和删除项目默认保留 7 天。</p>
-            <div id="trash-list" class="list" aria-live="polite" hidden></div>
+        <section id="view-site" aria-label="项目" hidden>
+            <header class="q-top">
+                <button class="q-round" type="button" data-back aria-label="返回"><svg class="q-i"><use href="#i-back"/></svg></button>
+                <span></span>
+                <a class="q-pill" id="site-open" href="#" target="_blank" rel="noopener">打开</a>
+            </header>
+            <main class="q-page" id="site-body"></main>
         </section>
 
-        <footer>
-            <span>Drop &amp; Deploy</span>
-            <span>管理端 · 写操作需要 Token</span>
-        </footer>
-    </main>
+        <section id="view-history" aria-labelledby="history-title" hidden>
+            <header class="q-top">
+                <button class="q-round" type="button" data-back aria-label="返回"><svg class="q-i"><use href="#i-back"/></svg></button>
+                <span></span>
+                <span></span>
+            </header>
+            <main class="q-page">
+                <div class="q-page-head">
+                    <h2 id="history-title">历史版本与回收站</h2>
+                    <p id="history-note">被替换下来的版本和删除的项目会保留一段时间，可以恢复。</p>
+                </div>
+                <input class="q-search" id="history-search" type="search" placeholder="搜索项目" aria-label="搜索历史" autocomplete="off">
+                <div class="q-seg" id="history-filter" role="group" aria-label="类型">
+                    <button type="button" data-filter="all" aria-pressed="true">全部</button>
+                    <button type="button" data-filter="overwritten" aria-pressed="false">被替换的版本</button>
+                    <button type="button" data-filter="deleted" aria-pressed="false">已删除</button>
+                </div>
+                <ul class="q-rows" id="history"></ul>
+            </main>
+        </section>
+    </div>
 
-    <dialog id="token-dialog" aria-labelledby="token-title">
-        <form id="token-form" method="dialog">
-            <h2 id="token-title">输入管理 Token</h2>
-            <p>只用于本页的上传、修改、删除和恢复操作，不会写入浏览器存储。</p>
-            <label class="field">
-                <span>Token</span>
-                <input id="token-input" type="password" required minlength="7" autocomplete="off">
-            </label>
-            <div class="dialog-actions">
-                <button id="token-cancel" class="link" type="button">取消</button>
-                <button class="btn" type="submit">使用此 Token</button>
-            </div>
-        </form>
-    </dialog>
-
-    <dialog id="metadata-dialog" aria-labelledby="metadata-title">
-        <form id="metadata-form">
-            <h2 id="metadata-title">编辑项目资料</h2>
-            <p id="metadata-slug" class="mono"></p>
-            <label class="field">
-                <span>项目标题</span>
-                <input id="metadata-title-input" type="text" required maxlength="120" autocomplete="off">
-            </label>
-            <label class="field">
-                <span>项目简介</span>
-                <textarea id="metadata-description-input" maxlength="400" rows="3"></textarea>
-            </label>
-            <div class="dialog-actions">
-                <button id="metadata-cancel" class="link" type="button">取消</button>
-                <button class="btn" type="submit">保存资料</button>
-            </div>
-        </form>
-    </dialog>
-
-    <script src="js/sites.js"></script>
-    <script src="js/upload.js"></script>
+    <div class="q-toasts" id="toasts" aria-live="polite"></div>
 </body>
 </html>

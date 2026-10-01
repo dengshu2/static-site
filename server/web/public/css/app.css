@@ -1,7 +1,0 @@
-/* 公开目录页专用：其余样式来自 shared/base.css。 */
-
-/* 复制按钮平时隐藏，指针悬停或键盘聚焦时出现；触屏设备常驻。 */
-.copy { opacity: 0; transition: opacity .12s ease; }
-.row:hover .copy, .copy:focus-visible, .copy[data-done] { opacity: 1; }
-@media (hover: none) { .copy { opacity: 1; } }
-@media (max-width: 560px) { .copy { opacity: 1; } }

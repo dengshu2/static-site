@@ -3,6 +3,8 @@ services:
     build: ./server
     container_name: static-deployer
     restart: unless-stopped
+    depends_on:
+      - shot
     stop_grace_period: 20s
     ports:
       - "127.0.0.1:8080:8080"
@@ -37,6 +39,9 @@ services:
       - MAX_SITES=1000
       # 删除和覆盖的旧版本保留 7 天
       - TRASH_RETENTION_HOURS=168
+      # 项目封面：截图服务的地址，以及它访问本服务时用的主机名（只返回项目内容，不计访问）
+      - SHOT_URL=http://static-shot:9000
+      - INTERNAL_HOST=static-deployer
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
@@ -60,7 +65,42 @@ services:
         max-file: "3"
     networks:
       - proxy-network
+      - shot
+
+  # 给项目截封面图。只在 shot 网络里，能访问 deployer 的内部主机和外网，
+  # 不接触 proxy-network 上的其他服务，也不持有任何密钥。
+  shot:
+    build: ./shot
+    container_name: static-shot
+    restart: unless-stopped
+    environment:
+      - TARGET=http://static-deployer:8080
+    networks:
+      - shot
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+      - /home/shot:size=128m,uid=1001,gid=1001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/shot", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   proxy-network:
     external: true
+  shot: {}

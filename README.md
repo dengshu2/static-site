@@ -7,39 +7,58 @@
 | 路径 | 用途 | 权限 |
 |---|---|---|
 | `/` | 公开项目目录 | 公开只读 |
-| `/admin/` | 上传和管理页面 | 页面公开，写操作需要 Token |
+| `/admin/` | 上传和管理页面 | 页面公开，操作需要登录 |
 | `/s/<name>/` | 已部署静态项目 | 公开只读 |
-| `GET /api/sites` | 安全的公开项目元数据 | 公开只读 |
+| `/covers/<name>.jpg` | 项目封面截图 | 公开只读 |
+| `GET /api/sites` | 项目列表（公开目录不含文件数和体积） | 公开只读 |
 | `GET /api/analytics` | 项目数、容量和匿名访问汇总 | 公开只读 |
-| `POST /api/upload` | 上传并部署 | Bearer Token |
-| `PATCH /api/sites/<name>` | 修改项目标题和简介 | Bearer Token |
-| `DELETE /api/sites/<name>` | 移入回收站 | Bearer Token |
-| `GET /api/trash` | 查看回收站 | Bearer Token |
-| `POST /api/trash/<id>/restore` | 恢复项目 | Bearer Token |
-| `DELETE /api/trash/<id>` | 永久删除 | Bearer Token |
+| `POST /api/session` / `DELETE /api/session` | 登录（换取 30 天会话）/ 退出 | 管理页面 |
+| `POST /api/upload` | 上传并部署 | 登录或 Bearer Token |
+| `GET /api/sites/<name>` | 一个项目：近 30 天每日访问、历史版本 | 登录或 Bearer Token |
+| `PATCH /api/sites/<name>` | 修改项目标题和简介 | 登录或 Bearer Token |
+| `POST /api/sites/<name>/cover` | 重新截封面 | 登录或 Bearer Token |
+| `DELETE /api/sites/<name>` | 移入回收站 | 登录或 Bearer Token |
+| `GET /api/trash` | 查看历史版本与回收站 | 登录或 Bearer Token |
+| `POST /api/trash/<id>/restore` | 恢复；加 `?replace=1` 时替换同名的当前版本（当前版本进入历史） | 登录或 Bearer Token |
+| `DELETE /api/trash/<id>` | 永久删除 | 登录或 Bearer Token |
 
-Token 只保存在管理页面的 JavaScript 内存中，不会写入 Cookie、`localStorage` 或 `sessionStorage`。刷新或关闭页面后自动清除。
+## 登录
+
+管理页面输入一次 Token，换成一个 30 天有效的会话 Cookie：`HttpOnly`、`SameSite=Strict`、只属于管理端域名（HTTPS 下带 `__Host-` 前缀）。页面脚本读不到它，也从不保存 Token。Cookie 内容是过期时间加 HMAC 签名，密钥由 `DEPLOY_TOKEN` 派生：服务重启不会退出登录，**更换 Token 会让所有会话立即失效**。
+
+管理端（deploy）和上传内容（pages）属于同一个站点（同一个注册域名），SameSite 挡不住从上传页面发往管理端的请求，所以凭 Cookie 发起的写操作还必须来自管理页面本身（`Origin` 或 `Sec-Fetch-Site: same-origin`），否则返回 403。脚本和命令行照旧用 `Authorization: Bearer <Token>`。
+
+## 项目封面
+
+每个项目在发布、替换或恢复后自动截一张首屏（1280×800 缩到 800×500），公开目录用它做封面。截图由单独的 `shot` 容器完成（`shot/` 目录，headless Chrome 加中文和 emoji 字体），deployer 本身仍是不带浏览器的小镜像：
+
+- `shot` 只在单独的 `shot` 网络里，能访问 deployer 和外网，碰不到 `proxy-network` 上的其他服务，也不持有任何密钥；只接受 `/s/<name>/` 形式的路径。
+- 它通过 `INTERNAL_HOST`（`static-deployer`）访问项目：这个主机名只返回项目内容，截图不计入访问量。
+- 截图失败会在 10 秒、1 分钟、5 分钟后重试；之后每小时补一次所有还没有封面的项目。没有封面的项目显示标题首字母。
+- 封面存在 `data/covers/`，随 `data/` 一起备份；地址带版本号，可以长期缓存。
 
 ## 前端结构
 
 无构建步骤，全部通过 `//go:embed` 打包进二进制：
 
 ```text
-server/web/shared/base.css        设计变量、字体、排版和通用组件（两端共用）
-server/web/shared/fonts/*.woff2   自托管的 Inter 与 JetBrains Mono 拉丁子集
-server/web/public/                公开目录页
-server/web/admin/                 管理工作台
+server/web/shared/quiet.css       共用设计规范 Quiet UI（复制进来的版本，不要直接改）
+server/web/shared/site.css        两端共用的补充：自托管字体、应用标识颜色、封面
+server/web/shared/ui.js           两端共用的 DOM 和格式化工具
+server/web/shared/fonts/*.woff2   自托管的 Figtree 拉丁子集
+server/web/public/                公开目录（封面卡片、搜索、排序）
+server/web/admin/                 管理端：登录、工作台、项目页（#site/<name>）、历史（#history）
 ```
 
-`web/shared` 不单独挂路由：公开端和管理端各自的静态文件系统在未命中时回落到它，因此 `/base.css`、`/fonts/inter.woff2` 与 `/admin/base.css`、`/admin/fonts/inter.woff2` 指向同一份内嵌字节。两个 Origin 的 CSP 都是 `default-src 'self'`，字体必须各自提供，不能跨域共享。
+`web/shared` 不单独挂路由：公开端和管理端各自的静态文件系统在未命中时回落到它，因此 `/quiet.css`、`/fonts/figtree-v1.woff2` 与 `/admin/quiet.css`、`/admin/fonts/figtree-v1.woff2` 指向同一份内嵌字节。两个 Origin 的 CSP 只允许本站资源（外加 Cloudflare 自动注入的统计脚本），字体必须各自提供，不能跨域共享。
 
-自带字体只包含拉丁字母、数字和标点，中文回落到系统字体（PingFang SC / 微软雅黑 / Noto Sans SC）。`.woff2` 按文件名缓存一年（`immutable`），其余页面与脚本仍然每次重新验证，**更换字体文件时必须同时改文件名**。
+界面遵循 Quiet UI：不用弹窗、下拉菜单和浏览器确认框；需要确认的不可撤销操作改成"再点一次确认"，删除可以撤销。自带字体只包含拉丁字母、数字和标点，中文回落到系统字体（PingFang SC / 微软雅黑 / Noto Sans SC）。`.woff2` 按文件名缓存一年（`immutable`），其余页面与脚本仍然每次重新验证，**更换字体文件时必须同时改文件名**。
 
 ## 安全边界
 
 - 公开 API 不返回原始上传文件名，也不包含任何管理操作。
 - 访问统计只记录项目、日期和次数，不保存访客 IP、Cookie 或其他个人信息。
-- 管理 Token 使用固定时间摘要比较，失败请求按客户端 IP 限速。
+- 管理 Token 使用固定时间摘要比较，失败请求按客户端 IP 限速；登录后的会话见上文"登录"。
 - 上传文件先流式写入 `/data/tmp`，不依赖 scratch 镜像中的系统 `/tmp`。
 - ZIP 拒绝路径穿越、反斜杠路径、符号链接、特殊文件、重复路径和过深目录。
 - 同时限制上传体积、实际解压体积、ZIP 文件数、站点数和全部站点总容量。
@@ -87,6 +106,8 @@ docker compose up -d --build
 | `MAX_SITE_NAME_LEN` | `63` | 站点名长度上限 |
 | `MAX_SITES` | `1000` | 在线站点数量上限 |
 | `TRASH_RETENTION_HOURS` | `168` | 回收站保留时间 |
+| `SHOT_URL` | 空 | 截图服务地址（如 `http://static-shot:9000`）；空则不生成封面 |
+| `INTERNAL_HOST` | 空 | 截图服务访问本服务用的主机名（如 `static-deployer`），只返回项目内容、不计访问 |
 
 ## ZIP 结构
 
@@ -127,7 +148,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ./scripts/backup.sh
 ```
 
-默认保留 14 天，可通过 `BACKUP_DIR` 和 `BACKUP_RETENTION_DAYS` 调整。恢复前先停止服务并再次备份当前数据：
+默认保留 7 天，可通过 `BACKUP_DIR` 和 `BACKUP_RETENTION_DAYS` 调整。恢复前先停止服务并再次备份当前数据：
 
 ```bash
 docker compose down
@@ -149,22 +170,20 @@ sudo systemctl enable --now static-site-backup.timer
 项目使用 Go 1.26.5：
 
 ```bash
-cd server
-go test ./...
-go test -race ./...
-go vet ./...
+cd server && go test ./... && go vet ./...
+cd shot && go test ./... && go vet ./...
 ```
 
-CI 还会检查 Go 格式、浏览器 JavaScript 语法和 Docker 镜像构建。
+截图服务的浏览器测试需要 Chrome，没设 `CHROME_PATH` 时跳过；可以先 `go test -c`，再在 `shot` 镜像里运行。CI 还会检查 Go 格式、浏览器 JavaScript 语法和两个 Docker 镜像的构建。
 
 ## 生产域名拓扑
 
 Cloudflare 使用代理 A 记录：
 
 ```text
-site.dengshu.ovh    -> 151.245.106.129
-deploy.dengshu.ovh  -> 151.245.106.129
-pages.dengshu.ovh   -> 151.245.106.129
+site.dengshu.ovh    -> <源站 IP>
+deploy.dengshu.ovh  -> <源站 IP>
+pages.dengshu.ovh   -> <源站 IP>
 ```
 
 Compose 配置：
@@ -182,7 +201,8 @@ Caddy 为三个域名分别代理到 `static-deployer:8080`。应用按 Host 只
 
 ## 项目目录与访问统计
 
-- 公开目录支持按标题、简介或站点名搜索，并可按更新时间、访问量、名称和体积排序。
+- 公开目录以封面卡片展示，支持按标题、简介或站点名搜索，并可按更新时间、访问量和名称排序；文件数、体积只在管理端显示。
+- 管理端每个项目有单独的页面：封面和重新截图、近 30 天每日访问、修改资料、上传新版本、删除（可撤销）以及历史版本恢复。
 - 项目标题和简介可以在上传时填写，也可以在管理页后续修改。
 - 访问量统计 HTML 页面和目录首页的成功访问；脚本、样式、图片以及不存在的页面不会计数。
 - `data/stats.json` 保存累计访问、最后访问时间和最近 90 天的每日汇总，并随 `data/` 一起备份。

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -13,13 +14,18 @@ import (
 	"unicode/utf8"
 )
 
+// SiteResponse is a project as the API shows it. The catalog gets no file
+// count or size (those are for the admin); neither surface gets the original
+// upload filename.
 type SiteResponse struct {
 	Name         string     `json:"name"`
 	Title        string     `json:"title"`
 	Description  string     `json:"description"`
 	URL          string     `json:"url"`
-	Files        int        `json:"files"`
-	Size         int64      `json:"size"`
+	Cover        string     `json:"cover,omitempty"`
+	CoverPending bool       `json:"coverPending,omitempty"`
+	Files        int        `json:"files,omitempty"`
+	Size         int64      `json:"size,omitempty"`
 	Views        uint64     `json:"views"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
@@ -33,13 +39,49 @@ type TrashResponse struct {
 	Reason    string       `json:"reason"`
 }
 
-func (a *App) handleListSites(w http.ResponseWriter, _ *http.Request) {
-	sites := a.store.List()
-	out := make([]SiteResponse, 0, len(sites))
-	for _, site := range sites {
-		out = append(out, a.siteResponse(site))
+func (a *App) handleListSites(admin bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		sites := a.store.List()
+		out := make([]SiteResponse, 0, len(sites))
+		for _, site := range sites {
+			res := a.siteResponse(site)
+			if !admin {
+				res.Files, res.Size, res.CoverPending = 0, 0, false
+			}
+			out = append(out, res)
+		}
+		writeJSON(w, http.StatusOK, out)
 	}
-	writeJSON(w, http.StatusOK, out)
+}
+
+type SiteDetail struct {
+	Site     SiteResponse    `json:"site"`
+	Daily    []AnalyticsDay  `json:"daily"` // the last 30 days, oldest first
+	Versions []TrashResponse `json:"versions"`
+}
+
+// handleSiteDetail is one project for the admin: the project, its daily
+// visits and its earlier versions (overwritten or deleted, still kept).
+func (a *App) handleSiteDetail(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	site, ok := a.store.Get(name)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errBody("站点不存在"))
+		return
+	}
+	stats := a.stats.Get(name)
+	now := time.Now().In(time.Local)
+	detail := SiteDetail{Site: a.siteResponse(site), Versions: []TrashResponse{}}
+	for offset := 29; offset >= 0; offset-- {
+		day := now.AddDate(0, 0, -offset).Format(time.DateOnly)
+		detail.Daily = append(detail.Daily, AnalyticsDay{Date: day, Views: stats.Daily[day]})
+	}
+	for _, item := range a.trash.List() {
+		if item.Site.Name == name {
+			detail.Versions = append(detail.Versions, a.trashResponse(item))
+		}
+	}
+	writeJSON(w, http.StatusOK, detail)
 }
 
 func (a *App) handleAnalytics(w http.ResponseWriter, _ *http.Request) {
@@ -116,6 +158,7 @@ func (a *App) handleDeleteSite(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, errBody("保存元数据失败"))
 		return
 	}
+	a.covers.Remove(name)
 	log.Printf("event=deleted site=%q trash_id=%q ip=%q", name, item.ID, clientIP(r))
 	writeJSON(w, http.StatusOK, map[string]string{"trashId": item.ID})
 }
@@ -124,14 +167,15 @@ func (a *App) handleListTrash(w http.ResponseWriter, _ *http.Request) {
 	items := a.trash.List()
 	out := make([]TrashResponse, 0, len(items))
 	for _, item := range items {
-		out = append(out, TrashResponse{
-			ID:        item.ID,
-			Site:      a.siteResponse(item.Site),
-			DeletedAt: item.DeletedAt,
-			Reason:    item.Reason,
-		})
+		out = append(out, a.trashResponse(item))
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+func (a *App) trashResponse(item TrashItem) TrashResponse {
+	site := a.siteResponse(item.Site)
+	site.Cover, site.CoverPending, site.Views, site.LastViewedAt = "", false, 0, nil
+	return TrashResponse{ID: item.ID, Site: site, DeletedAt: item.DeletedAt, Reason: item.Reason}
 }
 
 func (a *App) handleRestoreTrash(w http.ResponseWriter, r *http.Request) {
@@ -146,30 +190,57 @@ func (a *App) handleRestoreTrash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ?replace=1 restores an earlier version over the live one, which in turn
+	// goes into the history (so this can be undone the same way).
+	replace := r.URL.Query().Get("replace") == "1"
+
 	a.mutateMu.Lock()
 	defer a.mutateMu.Unlock()
-	if a.store.Exists(item.Site.Name) {
-		writeJSON(w, http.StatusConflict, errBody("同名站点已经存在，无法恢复"))
-		return
-	}
-	count, _ := a.store.Usage()
-	if count >= a.cfg.MaxSites {
+	dest := filepath.Join(a.sitesDir, item.Site.Name)
+	var current *TrashItem
+	if live, exists := a.store.Get(item.Site.Name); exists {
+		if !replace {
+			writeJSON(w, http.StatusConflict, errBody("同名站点已经存在，无法恢复"))
+			return
+		}
+		moved, err := a.trash.Move(live, dest, "overwritten")
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, errBody("保存当前版本失败"))
+			return
+		}
+		current = &moved
+	} else if count, _ := a.store.Usage(); count >= a.cfg.MaxSites {
 		writeJSON(w, http.StatusInsufficientStorage, errBody("恢复后将超过站点数量上限"))
 		return
 	}
+	putBack := func() {
+		if current != nil {
+			_ = a.trash.Restore(*current, dest)
+		}
+	}
 
-	dest := filepath.Join(a.sitesDir, item.Site.Name)
 	if err := a.trash.Restore(item, dest); err != nil {
+		putBack()
 		writeJSON(w, http.StatusInternalServerError, errBody("恢复文件失败"))
 		return
 	}
-	if err := a.store.Save(item.Site); err != nil {
+	// The restored files keep their old times; browsers revalidating with
+	// If-Modified-Since would then be told the newer page they cached is
+	// still current. Give them the time of the restore.
+	if err := touchTree(dest, time.Now()); err != nil {
+		log.Printf("event=restore_touch_failed site=%q error=%q", item.Site.Name, err)
+	}
+	restored := item.Site
+	restored.UpdatedAt = time.Now().UTC()
+	if err := a.store.Save(restored); err != nil {
 		_ = a.trash.RollbackRestore(item, dest)
+		putBack()
 		writeJSON(w, http.StatusInternalServerError, errBody("恢复元数据失败"))
 		return
 	}
-	log.Printf("event=restored site=%q trash_id=%q ip=%q", item.Site.Name, item.ID, clientIP(r))
-	writeJSON(w, http.StatusOK, a.siteResponse(item.Site))
+	a.covers.Request(item.Site.Name)
+	log.Printf("event=restored site=%q trash_id=%q replace=%t ip=%q", item.Site.Name, item.ID, current != nil, clientIP(r))
+	writeJSON(w, http.StatusOK, a.siteResponse(restored))
 }
 
 func (a *App) handlePurgeTrash(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +269,8 @@ func (a *App) siteResponse(site Site) SiteResponse {
 		URL:          strings.TrimRight(a.cfg.ContentBaseURL, "/") + site.URL,
 		Files:        site.Files,
 		Size:         site.Size,
+		Cover:        a.covers.URL(site.Name),
+		CoverPending: a.covers.Pending(site.Name),
 		Views:        stats.Views,
 		CreatedAt:    site.CreatedAt,
 		UpdatedAt:    site.UpdatedAt,
@@ -224,4 +297,14 @@ func ensureJSONEOF(decoder *json.Decoder) error {
 		return err
 	}
 	return nil
+}
+
+// touchTree sets the modification time of every file under dir.
+func touchTree(dir string, t time.Time) error {
+	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		return os.Chtimes(path, t, t)
+	})
 }

@@ -2,63 +2,57 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drop &amp; Deploy — 静态项目目录</title>
-    <meta name="description" content="浏览、搜索和分享已经部署的静态项目。">
-    <meta property="og:title" content="Drop &amp; Deploy — 静态项目目录">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Drop &amp; Deploy — 静态项目档案馆</title>
+    <meta name="description" content="浏览、搜索和分享已经发布的静态页面与小型项目。">
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
+    <meta property="og:title" content="Drop &amp; Deploy — 静态项目档案馆">
     <meta property="og:description" content="一个轻量、自托管的静态项目档案馆。">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://site.dengshu.ovh/og.png">
     <meta property="og:image:width" content="1536">
     <meta property="og:image:height" content="1024">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111312'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23fff'/%3E%3C/svg%3E">
-    <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="css/app.css">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="preload" href="fonts/figtree-v1.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="quiet.css">
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="app.css">
+    <script type="module" src="app.js"></script>
 </head>
 <body>
-    <main class="page">
-        <header class="topbar">
-            <a class="wordmark" href="/">Drop &amp; Deploy</a>
-            <a id="admin-link" class="link" href="/admin/">管理</a>
-        </header>
-
-        <section class="intro">
-            <h1>静态项目档案馆</h1>
-            <p class="lede">这里收录已经发布的静态页面与小型项目。搜索、打开，或把链接分享给需要的人。</p>
-            <p class="stats" id="stats">—</p>
-        </section>
-
-        <section aria-labelledby="catalog-title">
-            <h2 id="catalog-title" class="sr-only">项目目录</h2>
-
-            <div class="tools">
-                <label class="search">
-                    <span class="sr-only">搜索项目</span>
-                    <input id="search-input" type="search" placeholder="搜索项目" autocomplete="off">
-                </label>
-                <label>
-                    <span class="sr-only">排序方式</span>
-                    <select id="sort-select">
-                        <option value="updated">最近更新</option>
-                        <option value="views">访问最多</option>
-                        <option value="name">名称顺序</option>
-                        <option value="size">体积最大</option>
-                    </select>
-                </label>
-                <button id="refresh-btn" class="link" type="button">刷新</button>
+    <svg class="sprite" aria-hidden="true">
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol>
+    </svg>
+    <div class="q-app">
+        <header class="q-top">
+            <span></span>
+            <div class="q-status">
+                <b class="brand"><span class="q-mark" aria-hidden="true">D</span>Drop &amp; Deploy</b>
+                <span>静态项目档案馆</span>
             </div>
-
-            <p id="site-count" class="count">正在读取…</p>
-            <div id="site-list" class="list" aria-live="polite"></div>
-        </section>
-
-        <footer>
-            <span>Drop &amp; Deploy</span>
-            <span>轻量、自托管、公开只读</span>
-        </footer>
-    </main>
-    <script src="js/app.js"></script>
+            <span></span>
+        </header>
+        <main class="q-page catalog">
+            <div class="q-page-head">
+                <h1>项目</h1>
+                <p id="stats">已经发布的静态页面与小型项目，点开即用，链接可以直接分享。</p>
+            </div>
+            <div class="tools">
+                <input class="q-search" id="search" type="search" placeholder="搜索标题或简介" aria-label="搜索项目" autocomplete="off">
+                <div class="q-seg" id="sort" role="group" aria-label="排序">
+                    <button type="button" data-sort="updated" aria-pressed="true">最近更新</button>
+                    <button type="button" data-sort="views" aria-pressed="false">访问最多</button>
+                    <button type="button" data-sort="name" aria-pressed="false">名称</button>
+                </div>
+            </div>
+            <div class="grid" id="grid" aria-live="polite"></div>
+        </main>
+        <footer class="foot"><span>Drop &amp; Deploy</span><span>自托管 · 公开只读</span></footer>
+    </div>
+    <div class="q-toasts" id="toasts" aria-live="polite"></div>
 </body>
 </html>

@@ -1,0 +1,18 @@
+/* The public catalog. */
+.q-page-head h1 { margin: 0; font-size: 30px; font-weight: 650; letter-spacing: -0.03em; }
+.tools { display: grid; gap: 10px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; align-items: start; }
+@media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+.grid > .q-state { grid-column: 1 / -1; }
+.card { position: relative; display: grid; gap: 8px; }
+.card .cover { box-shadow: var(--q-shadow); }
+.card .cover img { transition: transform 0.25s ease; }
+.card:hover .cover img { transform: scale(1.02); }
+.card-link { color: inherit; text-decoration: none; display: grid; gap: 8px; border-radius: 12px; }
+.card-link::after { content: ""; position: absolute; inset: 0; } /* the whole card opens the project */
+.card-title { margin: 0; font-size: 16.5px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.card-desc { margin: 0; font-size: 14px; color: var(--q-sub); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-foot .q-st { font-size: 12.5px; }
+.card-foot .q-play { position: relative; z-index: 1; } /* above the card's link */
+.skel { aspect-ratio: 16 / 10; border-radius: 12px; }

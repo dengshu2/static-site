@@ -37,7 +37,12 @@ func newTestApp(t *testing.T) *App {
 	if err != nil {
 		t.Fatal(err)
 	}
+	covers, err := NewCovers(dataDir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	return &App{
+		covers: covers,
 		cfg: Config{
 			Token:          testToken,
 			PublicHost:     "site.test",
@@ -275,26 +280,32 @@ func TestDeleteMovesToTrashAndRestoreWorks(t *testing.T) {
 	}
 }
 
-func TestAdminScriptDoesNotPersistTokenOrUseInnerHTML(t *testing.T) {
+func TestScriptsNeverHandleTheTokenOrUseInnerHTML(t *testing.T) {
 	app := newTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "https://site.test/admin/js/sites.js", nil)
-	req.Host = "site.test"
-	res := httptest.NewRecorder()
-	app.routes().ServeHTTP(res, req)
-	if res.Code != http.StatusOK {
-		t.Fatalf("status=%d", res.Code)
-	}
-	body := res.Body.String()
-	for _, forbidden := range []string{"localStorage", "sessionStorage", "innerHTML"} {
-		if strings.Contains(body, forbidden) {
-			t.Fatalf("admin script contains %q", forbidden)
+	// The admin signs in with an HttpOnly cookie: no script should keep the
+	// token, and none builds markup from strings.
+	for _, path := range []string{"/admin/js/main.js", "/admin/js/api.js", "/admin/js/home.js", "/admin/js/deploy.js",
+		"/admin/js/sitepage.js", "/admin/js/history.js", "/ui.js", "/app.js"} {
+		req := httptest.NewRequest(http.MethodGet, "https://site.test"+path, nil)
+		req.Host = "site.test"
+		res := httptest.NewRecorder()
+		app.routes().ServeHTTP(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("%s: status=%d", path, res.Code)
+		}
+		body := res.Body.String()
+		for _, forbidden := range []string{"localStorage", "sessionStorage", "innerHTML", "document.cookie", "Authorization"} {
+			if strings.Contains(body, forbidden) {
+				t.Errorf("%s contains %q", path, forbidden)
+			}
 		}
 	}
 }
 
 func TestSharedAssetsServedFromBothSurfaces(t *testing.T) {
 	app := newTestApp(t)
-	for _, requestPath := range []string{"/base.css", "/fonts/inter.woff2", "/admin/base.css", "/admin/fonts/inter.woff2"} {
+	for _, requestPath := range []string{"/quiet.css", "/site.css", "/ui.js", "/fonts/figtree-v1.woff2", "/favicon.ico",
+		"/admin/quiet.css", "/admin/ui.js", "/admin/fonts/figtree-v1.woff2"} {
 		req := httptest.NewRequest(http.MethodGet, "https://site.test"+requestPath, nil)
 		req.Host = "site.test"
 		res := httptest.NewRecorder()
@@ -401,8 +412,8 @@ func performUpload(t *testing.T, app *App, filename string, data []byte, name st
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPost, "https://site.test/api/upload", &body)
-	req.Host = "site.test"
+	req := httptest.NewRequest(http.MethodPost, "https://"+app.cfg.AdminHost+"/api/upload", &body)
+	req.Host = app.cfg.AdminHost
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	res := httptest.NewRecorder()

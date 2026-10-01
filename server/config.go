@@ -28,6 +28,11 @@ type Config struct {
 	MaxSiteNameLen int
 	MaxSites       int
 	TrashRetention time.Duration
+	// ShotURL is the screenshot service that makes project covers; empty turns
+	// covers off. InternalHost is the name the service reaches this server by:
+	// requests to it get the projects only, and are not counted as visits.
+	ShotURL      string
+	InternalHost string
 }
 
 func loadConfig() Config {
@@ -52,6 +57,8 @@ func loadConfig() Config {
 		MaxSiteNameLen: int(envPositiveInt64("MAX_SITE_NAME_LEN", 63)),
 		MaxSites:       int(envPositiveInt64("MAX_SITES", 1000)),
 		TrashRetention: time.Duration(envPositiveInt64("TRASH_RETENTION_HOURS", 168)) * time.Hour,
+		ShotURL:        env("SHOT_URL", ""),
+		InternalHost:   strings.ToLower(env("INTERNAL_HOST", "")),
 	}
 	if c.Token == "" {
 		log.Fatal("DEPLOY_TOKEN 未设置：私有部署必须配置 Token，否则任何人都能上传")

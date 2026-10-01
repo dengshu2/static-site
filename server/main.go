@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
 	"embed"
 	"errors"
 	"io/fs"
@@ -27,6 +25,7 @@ type App struct {
 	store     *Store
 	stats     *StatsStore
 	trash     *Trash
+	covers    *Covers
 	sitesDir  string
 	uploadDir string
 	mutateMu  sync.Mutex
@@ -62,11 +61,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("初始化回收站失败: %v", err)
 	}
+	covers, err := NewCovers(cfg.DataDir, cfg.ShotURL)
+	if err != nil {
+		log.Fatalf("初始化封面目录失败: %v", err)
+	}
 	app := &App{
 		cfg:       cfg,
 		store:     store,
 		stats:     stats,
 		trash:     trash,
+		covers:    covers,
 		sitesDir:  sitesDir,
 		uploadDir: uploadDir,
 		limiter:   newFailureLimiter(20, 10*time.Minute),
@@ -74,6 +78,21 @@ func main() {
 	janitorCtx, stopJanitor := context.WithCancel(context.Background())
 	defer stopJanitor()
 	go app.runTrashJanitor(janitorCtx)
+	go covers.Run(janitorCtx, store.Exists)
+	go func() {
+		// Projects without a cover (new ones whose screenshot failed, or all of
+		// them the first time covers are on) are picked up shortly after start
+		// and then every hour.
+		time.Sleep(5 * time.Second)
+		for {
+			covers.Backfill(store.List())
+			select {
+			case <-janitorCtx.Done():
+				return
+			case <-time.After(time.Hour):
+			}
+		}
+	}()
 
 	server := &http.Server{
 		Addr:              cfg.Listen,
@@ -142,6 +161,9 @@ func (a *App) routes() http.Handler {
 			host == a.cfg.ContentHost,
 		)
 	}
+	if a.cfg.InternalHost != "" {
+		handlers[a.cfg.InternalHost] = a.internalRoutes()
+	}
 	local := a.routesFor(true, true, true)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host := requestHost(r.Host)
@@ -163,17 +185,25 @@ func (a *App) routesFor(public, admin, content bool) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	if public || admin {
-		mux.HandleFunc("GET /api/sites", a.handleListSites)
+		mux.HandleFunc("GET /api/sites", a.handleListSites(admin))
 		mux.HandleFunc("GET /api/analytics", a.handleAnalytics)
+		mux.HandleFunc("GET /covers/{file}", a.serveCover)
 		mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusOK, map[string]string{
-				"publicURL":  a.cfg.PublicBaseURL,
-				"adminURL":   a.cfg.AdminBaseURL,
-				"contentURL": a.cfg.ContentBaseURL,
+			writeJSON(w, http.StatusOK, map[string]any{
+				"publicURL":   a.cfg.PublicBaseURL,
+				"adminURL":    a.cfg.AdminBaseURL,
+				"contentURL":  a.cfg.ContentBaseURL,
+				"maxUploadMB": a.cfg.MaxUploadMB,
+				"trashDays":   int(a.cfg.TrashRetention.Hours() / 24),
 			})
 		})
 	}
 	if admin {
+		mux.HandleFunc("POST /api/session", a.handleLogin)
+		mux.HandleFunc("DELETE /api/session", a.handleLogout)
+		mux.HandleFunc("GET /api/session", a.handleSession)
+		mux.Handle("GET /api/sites/{name}", a.auth(http.HandlerFunc(a.handleSiteDetail)))
+		mux.Handle("POST /api/sites/{name}/cover", a.auth(http.HandlerFunc(a.handleRetakeCover)))
 		mux.Handle("POST /api/upload", a.auth(http.HandlerFunc(a.handleUpload)))
 		mux.Handle("PATCH /api/sites/{name}", a.auth(http.HandlerFunc(a.handleUpdateSite)))
 		mux.Handle("DELETE /api/sites/{name}", a.auth(http.HandlerFunc(a.handleDeleteSite)))
@@ -200,6 +230,15 @@ func (a *App) routesFor(public, admin, content bool) http.Handler {
 	} else if admin {
 		mux.Handle("GET /", uiHeaders(noCache(adminUI)))
 	}
+	return mux
+}
+
+// internalRoutes serves the projects to the screenshot service on the
+// internal network: content only, and not counted as visits.
+func (a *App) internalRoutes() http.Handler {
+	mux := http.NewServeMux()
+	contentFS := indexOnlyFS{http.Dir(a.sitesDir)}
+	mux.Handle("GET /s/", contentHeaders(http.StripPrefix("/s/", http.FileServer(contentFS))))
 	return mux
 }
 
@@ -230,7 +269,10 @@ func noCache(next http.Handler) http.Handler {
 
 func uiHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'")
+		// Cloudflare injects its Web Analytics beacon at the edge; without these
+		// two sources every page view logged a blocked script.
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; "+
+			"script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self'")
 		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
 		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
@@ -302,28 +344,6 @@ func contentViewSite(path string) (string, bool) {
 	}
 	lower := strings.ToLower(relative)
 	return parts[0], strings.HasSuffix(lower, ".html") || strings.HasSuffix(lower, ".htm")
-}
-
-func (a *App) auth(next http.Handler) http.Handler {
-	want := sha256.Sum256([]byte(a.cfg.Token))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raw := r.Header.Get("Authorization")
-		token, ok := strings.CutPrefix(raw, "Bearer ")
-		got := sha256.Sum256([]byte(token))
-		ip := clientIP(r)
-		if !ok || subtle.ConstantTimeCompare(got[:], want[:]) != 1 {
-			log.Printf("event=auth_failed ip=%q path=%q", ip, r.URL.Path)
-			if !a.limiter.RecordFailure(ip) {
-				w.Header().Set("Retry-After", "600")
-				writeJSON(w, http.StatusTooManyRequests, errBody("鉴权失败次数过多，请稍后再试"))
-				return
-			}
-			writeJSON(w, http.StatusUnauthorized, errBody("未授权：请提供正确的 Token"))
-			return
-		}
-		a.limiter.Reset(ip)
-		next.ServeHTTP(w, r)
-	})
 }
 
 func requestHost(raw string) string {
