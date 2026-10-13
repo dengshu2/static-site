@@ -12,7 +12,7 @@
 | `/covers/<name>.jpg` | 项目封面截图 | 公开只读 |
 | `GET /api/sites` | 项目列表（公开目录不含文件数和体积） | 公开只读 |
 | `GET /api/analytics` | 项目数、容量和匿名访问汇总 | 公开只读 |
-| `POST /api/session` / `DELETE /api/session` | 登录（换取 30 天会话）/ 退出 | 管理页面 |
+| `POST /api/session` / `DELETE /api/session` | 登录（换取 30 天会话，使用中自动续期）/ 退出 | 管理页面 |
 | `POST /api/upload` | 上传并部署 | 登录或 Bearer Token |
 | `GET /api/sites/<name>` | 一个项目：近 30 天每日访问、历史版本 | 登录或 Bearer Token |
 | `PATCH /api/sites/<name>` | 修改项目标题和简介 | 登录或 Bearer Token |
@@ -24,7 +24,7 @@
 
 ## 登录
 
-管理页面输入一次 Token，换成一个 30 天有效的会话 Cookie：`HttpOnly`、`SameSite=Strict`、只属于管理端域名（HTTPS 下带 `__Host-` 前缀）。页面脚本读不到它，也从不保存 Token。Cookie 内容是过期时间加 HMAC 签名，密钥由 `DEPLOY_TOKEN` 派生：服务重启不会退出登录，**更换 Token 会让所有会话立即失效**。
+管理页面输入一次 Token，换成一个 30 天有效的会话 Cookie（剩余不到一半时，下次使用会自动换成新的 30 天）：`HttpOnly`、`SameSite=Strict`、只属于管理端域名（HTTPS 下带 `__Host-` 前缀）。页面脚本读不到它，也从不保存 Token。Cookie 内容是过期时间加 HMAC 签名，密钥由 `DEPLOY_TOKEN` 派生：服务重启不会退出登录，**更换 Token 会让所有会话立即失效**。
 
 管理端（deploy）和上传内容（pages）属于同一个站点（同一个注册域名），SameSite 挡不住从上传页面发往管理端的请求，所以凭 Cookie 发起的写操作还必须来自管理页面本身（`Origin` 或 `Sec-Fetch-Site: same-origin`），否则返回 403。脚本和命令行照旧用 `Authorization: Bearer <Token>`。
 

@@ -113,3 +113,29 @@ func TestCookieWritesMustComeFromTheAdminPage(t *testing.T) {
 		t.Fatalf("cookie after a token change: %d", res.Code)
 	}
 }
+
+func TestSessionIsExtendedPastItsHalfLife(t *testing.T) {
+	app := adminApp(t)
+	fresh := &http.Cookie{Name: "__Host-dd_session", Value: app.signSession(time.Now().Add(sessionLifetime - time.Hour))}
+	if res := send(app, "GET", "/api/trash", "", nil, fresh); res.Code != http.StatusOK || len(res.Result().Cookies()) != 0 {
+		t.Fatalf("fresh cookie: %d %v", res.Code, res.Result().Cookies())
+	}
+
+	aging := &http.Cookie{Name: "__Host-dd_session", Value: app.signSession(time.Now().Add(3 * 24 * time.Hour))}
+	for _, path := range []string{"/api/session", "/api/trash"} {
+		res := send(app, "GET", path, "", nil, aging)
+		cookies := res.Result().Cookies()
+		if res.Code != http.StatusOK || len(cookies) != 1 {
+			t.Fatalf("%s with an aging cookie: %d %v", path, res.Code, cookies)
+		}
+		expires, ok := app.sessionExpiry(cookies[0].Value, time.Now())
+		if !ok || time.Until(expires) < sessionLifetime-time.Minute || cookies[0].MaxAge < 29*24*3600 {
+			t.Fatalf("%s renewed cookie = %+v", path, cookies[0])
+		}
+	}
+
+	// A cross-origin write is refused before anything is renewed.
+	if res := send(app, "PATCH", "/api/sites/x", "{}", map[string]string{"Origin": "https://pages.test"}, aging); res.Code != http.StatusForbidden || len(res.Result().Cookies()) != 0 {
+		t.Fatalf("cross-origin write: %d %v", res.Code, res.Result().Cookies())
+	}
+}

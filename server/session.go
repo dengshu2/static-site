@@ -14,7 +14,8 @@ import (
 	"time"
 )
 
-// 管理端登录：输入一次 Token，换成 30 天的会话 Cookie。
+// 管理端登录：输入一次 Token，换成 30 天的会话 Cookie；剩余不到一半时，
+// 下次使用会换一个新的 30 天 Cookie，经常用就不会掉登录。
 //
 // Cookie 只有管理端域名能读写（HttpOnly、host-only，HTTPS 下带 __Host- 前缀），
 // 上传内容在另一个域名，脚本拿不到它。但 deploy 与 pages 属于同一个站点
@@ -47,21 +48,40 @@ func (a *App) signSession(expires time.Time) string {
 }
 
 func (a *App) validSession(value string, now time.Time) bool {
+	_, ok := a.sessionExpiry(value, now)
+	return ok
+}
+
+// sessionExpiry returns when a valid, unexpired session cookie runs out.
+func (a *App) sessionExpiry(value string, now time.Time) (time.Time, bool) {
 	exp, sig, ok := strings.Cut(value, ".")
 	if !ok {
-		return false
+		return time.Time{}, false
 	}
 	unix, err := strconv.ParseInt(exp, 10, 64)
 	if err != nil || now.Unix() >= unix {
-		return false
+		return time.Time{}, false
 	}
 	got, err := base64.RawURLEncoding.DecodeString(sig)
 	if err != nil {
-		return false
+		return time.Time{}, false
 	}
 	mac := hmac.New(sha256.New, a.sessionKey())
 	mac.Write([]byte(exp))
-	return hmac.Equal(got, mac.Sum(nil))
+	if !hmac.Equal(got, mac.Sum(nil)) {
+		return time.Time{}, false
+	}
+	return time.Unix(unix, 0), true
+}
+
+// keepSession replaces a valid session cookie that is past its half-life
+// with a fresh full-length one, and reports whether the cookie was valid.
+func (a *App) keepSession(w http.ResponseWriter, value string, now time.Time) bool {
+	expires, ok := a.sessionExpiry(value, now)
+	if ok && expires.Sub(now) < sessionLifetime/2 {
+		a.setSessionCookie(w, a.signSession(now.Add(sessionLifetime)), int(sessionLifetime.Seconds()))
+	}
+	return ok
 }
 
 func (a *App) setSessionCookie(w http.ResponseWriter, value string, maxAge int) {
@@ -132,7 +152,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 // handleSession answers whether the browser is signed in.
 func (a *App) handleSession(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie(a.sessionCookieName())
-	writeJSON(w, http.StatusOK, map[string]bool{"signedIn": err == nil && a.validSession(c.Value, time.Now())})
+	writeJSON(w, http.StatusOK, map[string]bool{"signedIn": err == nil && a.keepSession(w, c.Value, time.Now())})
 }
 
 // auth accepts the Bearer token, or a session cookie on a request the admin
@@ -154,6 +174,7 @@ func (a *App) auth(next http.Handler) http.Handler {
 				writeJSON(w, http.StatusForbidden, errBody("请求来源不是管理页面"))
 				return
 			}
+			a.keepSession(w, c.Value, time.Now())
 			next.ServeHTTP(w, r)
 			return
 		}
